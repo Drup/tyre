@@ -1,0 +1,39 @@
+OASISFormat: 0.4
+Name:        Tyre
+Version:     0.1
+Synopsis:    Typed Regular Expressions
+Authors:     Gabriel Radanne <drupyog@zoho.com>
+License:     MIT
+Plugins:     META (0.3), DevFiles (0.3)
+
+AlphaFeatures: pure_interface
+BuildTools: ocamlbuild
+
+AlphaFeatures: ocamlbuild_more_args
+
+Library tyre
+  Path: src
+  BuildDepends: re, gen
+  Modules: Tyre
+
+AlphaFeatures: ocamlbuild_more_args
+Document api
+  Type: ocamlbuild (0.3)
+  BuildTools: ocamldoc
+
+  Title: API reference for Tyre
+  XOCamlbuildPath: .
+  XOCamlbuildExtraArgs:
+    "-docflags '-colorize-code -short-functors -charset utf-8'"
+  XOCamlbuildLibraries: tyre
+
+Executable test
+  Build$: flag(tests)
+  Path: test
+  BuildDepends: tyre, alcotest
+  MainIs: test.ml
+
+Test test
+  Command: $test
+  TestTools: test
+  WorkingDirectory: _build
