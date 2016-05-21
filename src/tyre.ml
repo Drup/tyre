@@ -1,37 +1,45 @@
 
 let map_snd f (x,y) = (x, f y)
 
+(** {2 The various types} *)
+
 type ('a, 'b) conv = {
   to_ : 'a -> 'b ;
   from_ : 'b -> 'a ;
 }
 
-(** {2 The various types} *)
 type 'a t =
   | Regexp : Re.t -> string t
   | Conv   : 'a t * ('a, 'b) conv -> 'b t
   | Opt    : 'a t -> ('a option) t
   | Alt    : 'a t * 'b t -> [`Left of 'a | `Right of 'b] t
   | Seq    : 'a t * 'b t -> ('a * 'b) t
-  | Prefix : string * 'a t -> 'a t
-  | Suffix : 'a t * string -> 'a t
+  | Prefix : _ t * string * 'a t -> 'a t
+  | Suffix : 'a t * string * _ t  -> 'a t
   | Rep   : 'a t -> 'a list t
-  | Rep1  : 'a t -> ('a * 'a list) t
 
 let regex x = Regexp x
 let conv to_ from_ x = Conv (x, {to_; from_})
-let rep x = Rep x
-let rep1 x = Rep1 x
-let alt a b = Alt (a, b)
-let prefix s a = Prefix (s, a)
-let suffix a s = Suffix (a, s)
+
 let seq a b = Seq (a, b)
-let opt a = Opt a
+let alt a b = Alt (a, b)
 
 let (<?>) = alt
 let (<*>) = seq
-let ( *>) = prefix
-let (<* ) = suffix
+
+let prefix (x,s) a = Prefix (x, s, a)
+let suffix a (x,s) = Suffix (a, s, x)
+let prefixstr s a = prefix (regex (Re.str s), s) a
+let suffixstr a s = suffix a (regex (Re.str s), s)
+let opt a = Opt a
+
+let ( *>) = prefixstr
+let (<* ) = suffixstr
+let ( **>) = prefix
+let (<** ) = suffix
+
+let rep x = Rep x
+let rep1 x = x <*> rep x
 
 module Regex = struct
   open Re
@@ -90,17 +98,14 @@ let rec eval : type a . a t -> a -> string
   | Opt p -> (function None -> "" | Some x -> eval p x)
   | Seq (p1,p2) ->
     (fun (x1,x2) -> eval p1 x1 ^ eval p2 x2)
-  | Prefix(s,p) ->
+  | Prefix(_,s,p) ->
     fun x -> s ^ eval p x
-  | Suffix(p,s) ->
+  | Suffix(p,s,_) ->
     fun x -> eval p x ^ s
   | Alt (pL, pR) ->
     (function `Left x -> eval pL x | `Right x -> eval pR x)
   | Rep p ->
     fun l -> String.concat "" @@ List.map (eval p) l
-  | Rep1 p ->
-    fun (x,l) -> String.concat "" @@ List.map (eval p) @@ x::l
-
 
 (** {2 matching} *)
 
@@ -122,7 +127,6 @@ type _ wit =
   | Seq    :
       'a wit * 'b wit -> ('a * 'b) wit
   | Rep   : 'a wit * Re.re -> 'a list wit
-  | Rep1  : 'a wit * Re.re -> ('a * 'a list) wit
 
 (** Count the matching groups the regexp encoding some atom will have. *)
 let rec count_group
@@ -134,7 +138,6 @@ let rec count_group
     | Alt (_,e1,_,e2) -> count_group e1 + count_group e2
     | Seq (e1,e2) -> count_group e1 + count_group e2
     | Rep _ -> 1
-    | Rep1 _ -> 1
 
 let incrg e i = i + count_group e
 
@@ -153,12 +156,14 @@ let rec build
       let w1, (id1, re1) = map_snd mark @@ build e1 in
       let w2, (id2, re2) = map_snd mark @@ build e2 in
       Alt (id1, w1, id2, w2), alt [re1 ; re2]
-    | Prefix (s,e) ->
+    | Prefix (e_ign,_,e) ->
       let w, re = build e in
-      w, seq [str s ; re]
-    | Suffix (e,s) ->
+      let _, re_ign = build e_ign in
+      w, seq [no_group re_ign ; re]
+    | Suffix (e,_,e_ign) ->
       let w, re = build e in
-      w, seq [re ; str s]
+      let _, re_ign = build e_ign in
+      w, seq [re ; no_group re_ign]
     | Seq (e1,e2) ->
       let w1, re1 = build e1 in
       let w2, re2 = build e2 in
@@ -166,9 +171,6 @@ let rec build
     | Rep e ->
       let w, re = build e in
       Rep (w,Re.compile re), group @@ rep @@ no_group re
-    | Rep1 e ->
-      let w, re = build e in
-      Rep1 (w,Re.compile re), group @@ rep1 @@ no_group re
 
 (** {3 Extraction.} *)
 
@@ -198,12 +200,6 @@ let rec extract_atom
       let i, v2 = extract_atom e2 i s in
       i, (v1, v2)
     | Rep (e,re) -> i+1, extract_list e re i s
-    | Rep1 (e,re) ->
-      match extract_list e re i s with
-        | h :: t -> incrg rea i, (h, t)
-        | [] ->
-          (* Invariant: Rep1 produces [Re.rep1 e] *)
-          assert false
 
 (** We need to re-match the string for lists, in order to extract
     all the elements.

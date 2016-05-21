@@ -9,13 +9,21 @@ val rep1 : 'a t -> ('a * 'a list) t
 
 val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 val seq : 'a t -> 'b t -> ('a * 'b) t
-val prefix : string -> 'a t -> 'a t
-val suffix : 'a t -> string -> 'a t
+
+val prefix : (_ t * string) -> 'a t -> 'a t
+val prefixstr : string -> 'a t -> 'a t
+val suffix : 'a t -> (_ t * string) -> 'a t
+val suffixstr : 'a t -> string -> 'a t
 
 val (<?>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 val (<*>) : 'a t -> 'b t -> ('a * 'b) t
-val (<* ) : 'a t -> string -> 'a t
+
 val ( *>) :  string -> 'a t -> 'a t
+val (<* ) : 'a t -> string -> 'a t
+
+val ( **>) : (_ t * string) -> 'a t -> 'a t
+val (<** ) : 'a t -> (_ t * string) -> 'a t
+
 
 val int : int t
 val pos_int : int t
