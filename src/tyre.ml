@@ -85,27 +85,39 @@ let separated_list ~sep e =
 
 (** Evaluation is the act of filling the holes. *)
 
-let rec unparse : type a . a t -> a -> string
-  = function
-  (* TODO: We could pre-compile the regexp. *)
-  | Regexp re ->
-    fun s ->
-      if not @@ Re.execp (Re.compile @@ Re.whole_string re) s
-      then invalid_arg @@
-        Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." s ;
-      s
-  | Conv (r, conv) -> fun x -> unparse r (conv.from_ x)
-  | Opt p -> (function None -> "" | Some x -> unparse p x)
-  | Seq (p1,p2) ->
-    (fun (x1,x2) -> unparse p1 x1 ^ unparse p2 x2)
-  | Prefix(_,s,p) ->
-    fun x -> s ^ unparse p x
-  | Suffix(p,s,_) ->
-    fun x -> unparse p x ^ s
-  | Alt (pL, pR) ->
-    (function `Left x -> unparse pL x | `Right x -> unparse pR x)
-  | Rep p ->
-    fun l -> String.concat "" @@ List.map (unparse p) l
+let pstr = Format.pp_print_string
+let plist f = Format.pp_print_list ~pp_sep:(fun _ _ -> ()) f
+
+let rec unpparse
+  : type a . a t -> Format.formatter -> a -> unit
+  = fun tre ppf -> match tre with
+    (* TODO: We could pre-compile the regexp. *)
+    | Regexp re -> begin function v ->
+        if not @@ Re.execp (Re.compile @@ Re.whole_string re) v
+        then invalid_arg @@
+          Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
+        pstr ppf v
+      end
+    | Conv (tre, conv) -> fun v -> unpparse tre ppf (conv.from_ v)
+    | Opt p -> begin function
+        | None -> pstr ppf ""
+        | Some x -> unpparse p ppf x
+      end
+    | Seq (tre1,tre2) -> fun (x1, x2) ->
+      unpparse tre1 ppf x1 ;
+      unpparse tre2 ppf x2 ;
+    | Prefix(_,s,tre) ->
+      fun v -> pstr ppf s ; unpparse tre ppf v
+    | Suffix(tre,s,_) ->
+      fun v -> unpparse tre ppf v ; pstr ppf s
+    | Alt (treL, treR) -> begin function
+        | `Left x -> unpparse treL ppf x
+        | `Right x -> unpparse treR ppf x
+      end
+    | Rep tre ->
+      plist (unpparse tre) ppf
+
+let unparse tre = Format.asprintf "%a" (unpparse tre)
 
 (** {2 matching} *)
 

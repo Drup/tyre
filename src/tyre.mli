@@ -34,7 +34,9 @@ val terminated_list : sep:string -> 'a t -> 'a list t
 val separated_list : sep:string -> 'a t -> 'a list t
 
 val parse : 'a t -> string -> 'a option
+
 val unparse : 'a t -> 'a -> string
+val unpparse : 'a t -> Format.formatter -> 'a -> unit
 
 type 'r route = Route : 'a t * ('a -> 'r) -> 'r route
 val (-->) : 'a t -> ('a -> 'r) -> 'r route
