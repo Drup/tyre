@@ -9,7 +9,8 @@ type ('a, 'b) conv = {
 }
 
 type 'a t =
-  | Regexp : Re.t -> string t
+  (* We store a compiled regex to efficiently check string when unparsing. *)
+  | Regexp : Re.t * Re.re Lazy.t -> string t
   | Conv   : 'a t * ('a, 'b) conv -> 'b t
   | Opt    : 'a t -> ('a option) t
   | Alt    : 'a t * 'b t -> [`Left of 'a | `Right of 'b] t
@@ -18,7 +19,9 @@ type 'a t =
   | Suffix : 'a t * string * _ t  -> 'a t
   | Rep   : 'a t -> 'a list t
 
-let regex x = Regexp x
+let regex x =
+  let re = lazy Re.(compile @@ whole_string @@ no_group x) in
+  Regexp (x, re)
 let conv to_ from_ x = Conv (x, {to_; from_})
 
 let seq a b = Seq (a, b)
@@ -91,10 +94,9 @@ let plist f = Format.pp_print_list ~pp_sep:(fun _ _ -> ()) f
 let rec unpparse
   : type a . a t -> Format.formatter -> a -> unit
   = fun tre ppf -> match tre with
-    (* TODO: We could pre-compile the regexp. *)
-    | Regexp re -> begin function v ->
-        if not @@ Re.execp (Re.compile @@ Re.whole_string re) v
-        then invalid_arg @@
+    | Regexp (_, lazy cre) -> begin function v ->
+        if not @@ Re.execp cre v then
+          invalid_arg @@
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
         pstr ppf v
       end
@@ -157,7 +159,7 @@ let incrg e i = i + count_group e
 let rec build
   : type a. a t -> a wit * Re.t
   = let open Re in function
-    | Regexp re -> Regexp re, group @@ no_group re
+    | Regexp (re, _) -> Regexp re, group @@ no_group re
     | Conv (e, conv) ->
       let w, re = build e in
       Conv (w, conv), re
