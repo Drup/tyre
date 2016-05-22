@@ -85,7 +85,7 @@ let separated_list ~sep e =
 
 (** Evaluation is the act of filling the holes. *)
 
-let rec eval : type a . a t -> a -> string
+let rec unparse : type a . a t -> a -> string
   = function
   (* TODO: We could pre-compile the regexp. *)
   | Regexp re ->
@@ -94,18 +94,18 @@ let rec eval : type a . a t -> a -> string
       then invalid_arg @@
         Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." s ;
       s
-  | Conv (r, conv) -> fun x -> eval r (conv.from_ x)
-  | Opt p -> (function None -> "" | Some x -> eval p x)
+  | Conv (r, conv) -> fun x -> unparse r (conv.from_ x)
+  | Opt p -> (function None -> "" | Some x -> unparse p x)
   | Seq (p1,p2) ->
-    (fun (x1,x2) -> eval p1 x1 ^ eval p2 x2)
+    (fun (x1,x2) -> unparse p1 x1 ^ unparse p2 x2)
   | Prefix(_,s,p) ->
-    fun x -> s ^ eval p x
+    fun x -> s ^ unparse p x
   | Suffix(p,s,_) ->
-    fun x -> eval p x ^ s
+    fun x -> unparse p x ^ s
   | Alt (pL, pR) ->
-    (function `Left x -> eval pL x | `Right x -> eval pR x)
+    (function `Left x -> unparse pL x | `Right x -> unparse pR x)
   | Rep p ->
-    fun l -> String.concat "" @@ List.map (eval p) l
+    fun l -> String.concat "" @@ List.map (unparse p) l
 
 (** {2 matching} *)
 
@@ -213,12 +213,12 @@ and extract_list
     let aux s = snd @@ extract_atom e 1 s in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
-    (* The whole original string*)
+    (* The whole original string, no copy! *)
     let original = Re.get s 0 in
     Gen.to_list @@ Gen.map aux @@ Re.all_gen ~pos ~len re original
 
 
-let get
+let parse
   : type r. r t -> string -> r option
   = fun tre ->
     let wit, re = build tre in
@@ -267,7 +267,7 @@ let rec find_and_trigger
 exception Unmatched of string
 let unmatched s = raise (Unmatched s)
 
-let match_
+let switch
   : type r.
     ?default:(string -> r) -> r route list -> string -> r
   = fun ?(default=unmatched) l ->

@@ -33,12 +33,11 @@ val bool : bool t
 val terminated_list : sep:string -> 'a t -> 'a list t
 val separated_list : sep:string -> 'a t -> 'a list t
 
-val eval : 'a t -> 'a -> string
-
-val get : 'a t -> string -> 'a option
+val parse : 'a t -> string -> 'a option
+val unparse : 'a t -> 'a -> string
 
 type 'r route = Route : 'a t * ('a -> 'r) -> 'r route
 val (-->) : 'a t -> ('a -> 'r) -> 'r route
 
-val match_ :
+val switch :
   ?default:(string -> 'r) -> 'r route list -> string -> 'r
