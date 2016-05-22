@@ -230,17 +230,15 @@ and extract_list
     Gen.to_list @@ Gen.map aux @@ Re.all_gen ~pos ~len re original
 
 
-let parse
-  : type r. r t -> string -> r option
-  = fun tre ->
-    let wit, re = build tre in
-    let cre = Re.compile re in
-    fun s ->
-      try
-        let subs = Re.exec cre s in
-        Some (snd @@ extract_atom wit 1 subs)
-      with
-          Not_found -> None
+let parse tre =
+  let wit, re = build tre in
+  let cre = Re.compile re in
+  fun s ->
+    try
+      let subs = Re.exec cre s in
+      Some (snd @@ extract_atom wit 1 subs)
+    with
+      Not_found -> None
 
 (** {4 Multiple match} *)
 
@@ -250,44 +248,40 @@ let route re f = Route (re, f)
 
 let (-->) = route
 
-type 'r re_route =
-    Route' : Re.markid * 'a wit * ('a -> 'r) -> 'r re_route
+type 'r wit_route =
+    WRoute : Re.markid * 'a wit * ('a -> 'r) -> 'r wit_route
 
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
 *)
-let rec build_route = function
-  | [] -> [], []
+let rec build_route_aux rel wl = function
+  | [] -> List.rev rel, List.rev wl
   | Route (tre, f) :: l ->
     let wit, re = build tre in
     let id, re = Re.mark re in
+    let w = WRoute (id, wit, f) in
+    build_route_aux (re::rel) (w::wl) l
 
-    let rel, wl = build_route l in
-    re::rel, Route' (id, wit, f)::wl
+let build_route l = build_route_aux [] [] l
 
-let rec find_and_trigger
-  : type r. Re.substrings -> r re_route list -> r
-  = fun subs -> function
-    | [] ->
-      (* Invariant: At least one of the regexp of the alternative matches. *)
-      assert false
-    | Route' (id, wit, f) :: l ->
-      if Re.marked subs id then f @@ snd @@ extract_atom wit 1 subs
-      else find_and_trigger subs l
+let rec find_and_trigger subs = function
+  | [] ->
+    (* Invariant: At least one of the regexp of the alternative matches. *)
+    assert false
+  | WRoute (id, wit, f) :: l ->
+    if Re.marked subs id then f @@ snd @@ extract_atom wit 1 subs
+    else find_and_trigger subs l
 
 exception Unmatched of string
 let unmatched s = raise (Unmatched s)
 
-let switch
-  : type r.
-    ?default:(string -> r) -> r route list -> string -> r
-  = fun ?(default=unmatched) l ->
-    let rel, wl = build_route l in
-    let re = Re.(compile @@ whole_string @@ alt rel) in
-    fun s ->
-      try
-        let subs = Re.exec re s in
-        find_and_trigger subs wl
-      with
-          Not_found -> default s
+let switch ?(default=unmatched) l =
+  let rel, wl = build_route l in
+  let re = Re.(compile @@ whole_string @@ alt rel) in
+  fun s ->
+    try
+      let subs = Re.exec re s in
+      find_and_trigger subs wl
+    with
+      Not_found -> default s
