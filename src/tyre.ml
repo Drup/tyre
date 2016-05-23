@@ -244,7 +244,7 @@ let parse tre =
 
 (** {4 Multiple match} *)
 
-type 'r route = Route : 'a t * ('a -> 'r) -> 'r route
+type +'r route = Route : 'a t * ('a -> 'r) -> 'r route
 
 let route re f = Route (re, f)
 
@@ -278,7 +278,7 @@ let rec find_and_trigger subs = function
 exception Unmatched of string
 let unmatched s = raise (Unmatched s)
 
-let switch ?(default=unmatched) l =
+let route ?(default=unmatched) l =
   let rel, wl = build_route l in
   let re = Re.(compile @@ whole_string @@ alt rel) in
   fun s ->
