@@ -232,15 +232,19 @@ and extract_list
     Gen.to_list @@ Gen.map aux @@ Re.all_gen ~pos ~len re original
 
 
-let parse tre =
+type 'a re = { wit : 'a wit ; cre : Re.re }
+
+let compile tre =
   let wit, re = build tre in
   let cre = Re.compile re in
-  fun s ->
-    try
-      let subs = Re.exec cre s in
-      Some (snd @@ extract_atom wit 1 subs)
-    with
-      Not_found -> None
+  { wit ; cre }
+
+let parse { wit ; cre } s =
+  try
+    let subs = Re.exec cre s in
+    Some (snd @@ extract_atom wit 1 subs)
+  with
+    Not_found -> None
 
 (** {4 Multiple match} *)
 

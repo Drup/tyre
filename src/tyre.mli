@@ -118,7 +118,18 @@ val terminated_list : sep:string -> 'a t -> 'a list t
 val separated_list : sep:string -> 'a t -> 'a list t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <*> rep (sep *> e))]. *)
 
-val parse : 'a t -> string -> 'a option
+(** {2:parsing Parsing} *)
+
+type 'a re
+(** A compiled typed regular expression. *)
+
+val compile : 'a t -> 'a re
+(** [compile tyre] is the compiled tyregex representing [tyre]. *)
+
+val parse : 'a re -> string -> 'a option
+(** [parse ctyre s] parses the string [s] using the compiled tyregex [ctyre] and returns the extracted value.
+*)
+
 (** {2:unparsing Unparsing} *)
 
 val unparse : 'a t -> 'a -> string

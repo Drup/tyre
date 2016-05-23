@@ -1,7 +1,9 @@
 open Tyre
 
 let r =
-  "foo" *> separated_list ~sep:"," int <* "bar"
+  compile (
+    "foo" *> separated_list ~sep:"," int <* "bar"
+  )
 
 let test1 () =
   Alcotest.(check @@ option @@ list int)
