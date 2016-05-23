@@ -6,3 +6,4 @@ setup.data
 setup.exe
 setup.log
 _tests
+*.docdir
