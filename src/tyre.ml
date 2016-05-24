@@ -191,29 +191,33 @@ let rec build
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
 *)
-let rec extract_atom
+let rec extract_aux
   : type a. a wit -> int -> Re.substrings -> int * a
   = fun rea i s -> match rea with
     | Regexp _ -> incrg rea i, Re.get s i
     | Conv (w, conv) ->
-      let i, v = extract_atom w i s in
+      let i, v = extract_aux w i s in
       i, conv.to_ v
     | Opt (id,w) ->
       if not @@ Re.marked s id then incrg rea i, None
-      else map_snd (fun x -> Some x) @@ extract_atom w i s
+      else map_snd (fun x -> Some x) @@ extract_aux w i s
     | Alt (i1,w1,id2,w2) ->
       if Re.marked s i1 then
-        map_snd (fun x -> `Left x) @@ extract_atom w1 i s
+        map_snd (fun x -> `Left x) @@ extract_aux w1 i s
       else if Re.marked s id2 then
-        map_snd (fun x -> `Right x) @@ extract_atom w2 (incrg w1 i) s
+        map_snd (fun x -> `Right x) @@ extract_aux w2 (incrg w1 i) s
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
         assert false
     | Seq (e1,e2) ->
-      let i, v1 = extract_atom e1 i s in
-      let i, v2 = extract_atom e2 i s in
+      let i, v1 = extract_aux e1 i s in
+      let i, v2 = extract_aux e2 i s in
       i, (v1, v2)
     | Rep (e,re) -> i+1, extract_list e re i s
+
+and extract
+  : type a . a wit -> Re.substrings -> a
+  = fun e s -> snd @@ extract_aux e 1 s
 
 (** We need to re-match the string for lists, in order to extract
     all the elements.
@@ -224,27 +228,12 @@ let rec extract_atom
 and extract_list
   : type a. a wit -> Re.re -> int -> Re.substrings -> a list
   = fun e re i s ->
-    let aux s = snd @@ extract_atom e 1 s in
+    let aux = extract e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
     (* The whole original string, no copy! *)
     let original = Re.get s 0 in
     Gen.to_list @@ Gen.map aux @@ Re.all_gen ~pos ~len re original
-
-
-type 'a re = { wit : 'a wit ; cre : Re.re }
-
-let compile tre =
-  let wit, re = build tre in
-  let cre = Re.compile re in
-  { wit ; cre }
-
-let parse { wit ; cre } s =
-  try
-    let subs = Re.exec cre s in
-    Some (snd @@ extract_atom wit 1 subs)
-  with
-    Not_found -> None
 
 (** {4 Multiple match} *)
 
@@ -256,7 +245,6 @@ let (-->) = route
 
 type 'r wit_route =
     WRoute : Re.markid * 'a wit * ('a -> 'r) -> 'r wit_route
-
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -271,23 +259,36 @@ let rec build_route_aux rel wl = function
 
 let build_route l = build_route_aux [] [] l
 
-let rec find_and_trigger subs = function
+let rec extract_route subs = function
   | [] ->
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
   | WRoute (id, wit, f) :: l ->
-    if Re.marked subs id then f @@ snd @@ extract_atom wit 1 subs
-    else find_and_trigger subs l
+    if Re.marked subs id then f @@ extract wit subs
+    else extract_route subs l
 
-exception Unmatched of string
-let unmatched s = raise (Unmatched s)
 
-let route ?(default=unmatched) l =
+(** {4 Compilation and execution} *)
+
+type 'r info =
+  | One of 'r wit
+  | Routes of 'r wit_route list
+
+type 'a re = { info : 'a info ; cre : Re.re }
+
+let compile tre =
+  let wit, re = build tre in
+  let cre = Re.(compile re) in
+  { info = One wit ; cre }
+
+let route l =
   let rel, wl = build_route l in
-  let re = Re.(compile @@ whole_string @@ alt rel) in
-  fun s ->
-    try
-      let subs = Re.exec re s in
-      find_and_trigger subs wl
-    with
-      Not_found -> default s
+  let cre = Re.(compile @@ alt rel) in
+  { info = Routes wl ; cre }
+
+let exec ?pos ?len { info ; cre } s =
+  match Re.exec_opt ?pos ?len cre s with
+  | None -> None
+  | Some subs -> match info with
+    | One wit -> Some (extract wit subs)
+    | Routes wl -> Some (extract_route subs wl)

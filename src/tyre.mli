@@ -6,7 +6,7 @@
 type 'a t
 (** A typed regular expression.
 
-    The type variable is the type of the returned value when the typed regular expression (tyregex) is executed. tyregexs are bi-directional and can be used both for {{!parsing}parsing} and {{!unparsing}unparsing}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
+    The type variable is the type of the returned value when the typed regular expression (tyregex) is executed. tyregexs are bi-directional and can be used both for {{!matching}matching} and {{!eval}evaluation}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
 
     Typed regular expressions are strictly as expressive as regular expressions from {{:https://github.com/ocaml/ocaml-re}re} (and are, as such, {b regular} expressions, not PCREs). Performances should be exactly the same.
 
@@ -34,7 +34,7 @@ val opt : 'a t -> 'a option t
 val rep : 'a t -> 'a list t
 (** [rep tyre] matches [tyre] zero or more times. Similar to {!Re.rep}.
 
-    For {{!parsing}parsing}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
+    For {{!matching}matching}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
 *)
 
 val rep1 : 'a t -> ('a * 'a list) t
@@ -50,7 +50,7 @@ val seq : 'a t -> 'b t -> ('a * 'b) t
 val prefix : (_ t * string) -> 'a t -> 'a t
 (** [prefix (tyre_i, s) tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result.
 
-    [s] is the witness used for {{!unparsing}unparsing}. It is assumed (but not checked) that [tyre_i] matches [s].
+    [s] is the witness used for {{!eval}evaluation}. It is assumed (but not checked) that [tyre_i] matches [s].
 *)
 
 val prefixstr : string -> 'a t -> 'a t
@@ -118,7 +118,7 @@ val terminated_list : sep:string -> 'a t -> 'a list t
 val separated_list : sep:string -> 'a t -> 'a list t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <*> rep (sep *> e))]. *)
 
-(** {2:parsing Parsing} *)
+(** {2:matching Matching} *)
 
 type 'a re
 (** A compiled typed regular expression. *)
@@ -126,11 +126,18 @@ type 'a re
 val compile : 'a t -> 'a re
 (** [compile tyre] is the compiled tyregex representing [tyre]. *)
 
-val parse : 'a re -> string -> 'a option
-(** [parse ctyre s] parses the string [s] using the compiled tyregex [ctyre] and returns the extracted value.
+val exec : ?pos:int -> ?len:int -> 'a re -> string -> 'a option
+(** [exec ctyre s] matches the string [s] using the compiled tyregex [ctyre] and returns the extracted value.
 *)
 
-(** {2:unparsing Unparsing} *)
+(** {3:routing Routing} *)
+
+type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
+val (-->) : 'x t -> ('x -> 'a) -> 'a route
+
+val route : 'a route list -> 'a re
+
+(** {2:eval Evaluating} *)
 
 val unparse : 'a t -> 'a -> string
 (** [unparse tyre v] returns a string [s] such that [parse tyre s = v].
@@ -146,11 +153,3 @@ let my_pp = Tyre.unpparse tyre in
 Format.printf "%a@." my_pp v
 ]}
 *)
-
-(** {2:routing Routing} *)
-
-type +'r route = Route : 'a t * ('a -> 'r) -> 'r route
-val (-->) : 'a t -> ('a -> 'r) -> 'r route
-
-val route :
-  ?default:(string -> 'r) -> 'r route list -> string -> 'r
