@@ -91,7 +91,7 @@ let separated_list ~sep e =
 let pstr = Format.pp_print_string
 let plist f = Format.pp_print_list ~pp_sep:(fun _ _ -> ()) f
 
-let rec unpparse
+let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
   = fun tre ppf -> match tre with
     | Regexp (_, lazy cre) -> begin function v ->
@@ -100,26 +100,26 @@ let rec unpparse
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
         pstr ppf v
       end
-    | Conv (tre, conv) -> fun v -> unpparse tre ppf (conv.from_ v)
+    | Conv (tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
     | Opt p -> begin function
         | None -> pstr ppf ""
-        | Some x -> unpparse p ppf x
+        | Some x -> evalpp p ppf x
       end
     | Seq (tre1,tre2) -> fun (x1, x2) ->
-      unpparse tre1 ppf x1 ;
-      unpparse tre2 ppf x2 ;
+      evalpp tre1 ppf x1 ;
+      evalpp tre2 ppf x2 ;
     | Prefix(_,s,tre) ->
-      fun v -> pstr ppf s ; unpparse tre ppf v
+      fun v -> pstr ppf s ; evalpp tre ppf v
     | Suffix(tre,s,_) ->
-      fun v -> unpparse tre ppf v ; pstr ppf s
+      fun v -> evalpp tre ppf v ; pstr ppf s
     | Alt (treL, treR) -> begin function
-        | `Left x -> unpparse treL ppf x
-        | `Right x -> unpparse treR ppf x
+        | `Left x -> evalpp treL ppf x
+        | `Right x -> evalpp treR ppf x
       end
     | Rep tre ->
-      plist (unpparse tre) ppf
+      plist (evalpp tre) ppf
 
-let unparse tre = Format.asprintf "%a" (unpparse tre)
+let eval tre = Format.asprintf "%a" (evalpp tre)
 
 (** {2 matching} *)
 

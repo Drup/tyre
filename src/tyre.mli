@@ -139,17 +139,17 @@ val route : 'a route list -> 'a re
 
 (** {2:eval Evaluating} *)
 
-val unparse : 'a t -> 'a -> string
-(** [unparse tyre v] returns a string [s] such that [parse tyre s = v].
+val eval : 'a t -> 'a -> string
+(** [eval tyre v] returns a string [s] such that [exec (compile tyre) s = v].
 
-    Note that such string [s] is not unique. [unparse] will usually returns a very simple witness. *)
+    Note that such string [s] is not unique. [eval] will usually returns a very simple witness. *)
 
-val unpparse : 'a t -> Format.formatter -> 'a -> unit
-(** [unpparse tyre ppf v] is equivalent to [Format.fprintf ppf "%s" (unparse tyre v)], but more efficient.
+val evalpp : 'a t -> Format.formatter -> 'a -> unit
+(** [evalpp tyre ppf v] is equivalent to [Format.fprintf ppf "%s" (eval tyre v)], but more efficient.
 
     Is is generally used with ["%a"]:
 {[
-let my_pp = Tyre.unpparse tyre in
+let my_pp = Tyre.evalpp tyre in
 Format.printf "%a@." my_pp v
 ]}
 *)
