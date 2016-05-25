@@ -285,12 +285,12 @@ type 'a re = { info : 'a info ; cre : Re.re }
 
 let compile tre =
   let wit, re = build tre in
-  let cre = Re.(compile re) in
+  let cre = Re.(compile @@ whole_string re) in
   { info = One wit ; cre }
 
 let route l =
   let rel, wl = build_route l in
-  let cre = Re.(compile @@ alt rel) in
+  let cre = Re.(compile @@ whole_string @@ alt rel) in
   { info = Routes wl ; cre }
 
 let exec ?pos ?len { info ; cre } s =
