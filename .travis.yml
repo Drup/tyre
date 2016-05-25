@@ -3,6 +3,9 @@ sudo: required
 install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-opam.sh
 script: bash -ex .travis-ci.sh
 env:
+  os:
+  - linux
+  - osx
   global:
   - PACKAGE=tyre
   matrix:
