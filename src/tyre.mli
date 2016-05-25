@@ -31,13 +31,13 @@ let pos_int = Tyre.conv int_of_string string_of_int (Tyre.regex (Re.rep1 Re.digi
 val opt : 'a t -> 'a option t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
 
-val rep : 'a t -> 'a list t
+val rep : 'a t -> 'a Gen.t t
 (** [rep tyre] matches [tyre] zero or more times. Similar to {!Re.rep}.
 
     For {{!matching}matching}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
 *)
 
-val rep1 : 'a t -> ('a * 'a list) t
+val rep1 : 'a t -> ('a * 'a Gen.t) t
 (** [rep1 tyre] is [seq tyre (rep tyre)]. Similar to {!Re.rep1}. *)
 
 val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
@@ -111,6 +111,9 @@ val float : float t
 
 val bool : bool t
 (** [bool] matches [true|false] and returns the matched boolean. *)
+
+val list : 'a t -> 'a list t
+(** [list e] is similar to [rep e], but returns a list. *)
 
 val terminated_list : sep:string -> 'a t -> 'a list t
 (** [terminated_list ~sep tyre] is [ rep (tyre <* sep) ]. *)

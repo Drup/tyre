@@ -8,6 +8,8 @@ type ('a, 'b) conv = {
   from_ : 'b -> 'a ;
 }
 
+type 'a gen = unit -> 'a option
+
 type 'a t =
   (* We store a compiled regex to efficiently check string when unparsing. *)
   | Regexp : Re.t * Re.re Lazy.t -> string t
@@ -17,7 +19,7 @@ type 'a t =
   | Seq    : 'a t * 'b t -> ('a * 'b) t
   | Prefix : _ t * string * 'a t -> 'a t
   | Suffix : 'a t * string * _ t  -> 'a t
-  | Rep   : 'a t -> 'a list t
+  | Rep   : 'a t -> 'a gen t
 
 let regex x =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
@@ -76,9 +78,12 @@ let float =
 let bool =
   conv bool_of_string string_of_bool (regex Regex.bool)
 
-let terminated_list ~sep e = rep (e <* sep)
+let list e =
+  conv Gen.to_list Gen.of_list (rep e)
+
+let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
-  let e = opt (e <*> rep (sep *> e)) in
+  let e = opt (e <*> list (sep *> e)) in
   let to_ = function None -> [] | Some (h, t) -> h :: t
   and from_ = function [] -> None | h :: t -> Some (h, t)
   in
@@ -89,7 +94,9 @@ let separated_list ~sep e =
 (** Evaluation is the act of filling the holes. *)
 
 let pstr = Format.pp_print_string
-let plist f = Format.pp_print_list ~pp_sep:(fun _ _ -> ()) f
+let rec pprep f ppf gen = match gen () with
+  | None -> ()
+  | Some x -> f ppf x ; pprep f ppf gen
 
 let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
@@ -117,7 +124,7 @@ let rec evalpp
         | `Right x -> evalpp treR ppf x
       end
     | Rep tre ->
-      plist (evalpp tre) ppf
+      pprep (evalpp tre) ppf
 
 let eval tre = Format.asprintf "%a" (evalpp tre)
 
@@ -140,7 +147,7 @@ type _ wit =
     -> [`Left of 'a | `Right of 'b] wit
   | Seq    :
       'a wit * 'b wit -> ('a * 'b) wit
-  | Rep   : 'a wit * Re.re -> 'a list wit
+  | Rep   : 'a wit * Re.re -> 'a gen wit
 
 (** Count the matching groups the regexp encoding some atom will have. *)
 let rec count_group
@@ -226,14 +233,14 @@ and extract
     possible as it would be equivalent to counting in an automaton).
 *)
 and extract_list
-  : type a. a wit -> Re.re -> int -> Re.substrings -> a list
+  : type a. a wit -> Re.re -> int -> Re.substrings -> a gen
   = fun e re i s ->
     let aux = extract e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
     (* The whole original string, no copy! *)
     let original = Re.get s 0 in
-    Gen.to_list @@ Gen.map aux @@ Re.all_gen ~pos ~len re original
+    Gen.map aux @@ Re.all_gen ~pos ~len re original
 
 (** {4 Multiple match} *)
 
