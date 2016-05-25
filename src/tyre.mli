@@ -116,10 +116,10 @@ val list : 'a t -> 'a list t
 (** [list e] is similar to [rep e], but returns a list. *)
 
 val terminated_list : sep:string -> 'a t -> 'a list t
-(** [terminated_list ~sep tyre] is [ rep (tyre <* sep) ]. *)
+(** [terminated_list ~sep tyre] is [ list (tyre <* sep) ]. *)
 
 val separated_list : sep:string -> 'a t -> 'a list t
-(** [separated_list ~sep tyre] is equivalent to [opt (e <*> rep (sep *> e))]. *)
+(** [separated_list ~sep tyre] is equivalent to [opt (e <*> list (sep *> e))]. *)
 
 (** {2:matching Matching} *)
 
