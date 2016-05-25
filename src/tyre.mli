@@ -127,15 +127,33 @@ val compile : 'a t -> 'a re
 (** [compile tyre] is the compiled tyregex representing [tyre]. *)
 
 val exec : ?pos:int -> ?len:int -> 'a re -> string -> 'a option
-(** [exec ctyre s] matches the string [s] using the compiled tyregex [ctyre] and returns the extracted value.
+(** [exec ctyre s] matches the string [s] using
+    the compiled tyregex [ctyre] and returns the extracted value.
+
+    Returns [None] if the tyregex doesn't match.
+
+    @param pos optional beginning of the string (default 0)
+    @param len length of the substring of [str] that can be matched (default to the end of the string)
 *)
 
 (** {3:routing Routing} *)
 
 type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
+(** A route is a pair of a tyregex and a handler.
+    When the tyregex is matched, the function is called with the
+    result of the matching.
+*)
+
 val (-->) : 'x t -> ('x -> 'a) -> 'a route
+(** [tyre --> f] is [Route (tyre, f)]. *)
 
 val route : 'a route list -> 'a re
+(** [route [ tyre1 --> f1 ; tyre2 --> f2 ]] produces a compiled
+    tyregex such that, if [tyre1] matches, [f1] is called, and so on.
+
+    The compiled tyregex shoud be used with {!exec}.
+*)
+
 
 (** {2:eval Evaluating} *)
 
