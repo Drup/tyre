@@ -17,8 +17,8 @@ type 'a t =
   | Opt    : 'a t -> ('a option) t
   | Alt    : 'a t * 'b t -> [`Left of 'a | `Right of 'b] t
   | Seq    : 'a t * 'b t -> ('a * 'b) t
-  | Prefix : _ t * string * 'a t -> 'a t
-  | Suffix : 'a t * string * _ t  -> 'a t
+  | Prefix : 'b t * 'b * 'a t -> 'a t
+  | Suffix : 'a t * 'b * 'b t  -> 'a t
   | Rep   : 'a t -> 'a gen t
 
 let regex x =
@@ -115,10 +115,10 @@ let rec evalpp
     | Seq (tre1,tre2) -> fun (x1, x2) ->
       evalpp tre1 ppf x1 ;
       evalpp tre2 ppf x2 ;
-    | Prefix(_,s,tre) ->
-      fun v -> pstr ppf s ; evalpp tre ppf v
-    | Suffix(tre,s,_) ->
-      fun v -> evalpp tre ppf v ; pstr ppf s
+    | Prefix(tre_l,l,tre) ->
+      fun v -> evalpp tre_l ppf l ; evalpp tre ppf v
+    | Suffix(tre,g,tre_g) ->
+      fun v -> evalpp tre ppf v ; evalpp tre_g ppf g
     | Alt (treL, treR) -> begin function
         | `Left x -> evalpp treL ppf x
         | `Right x -> evalpp treR ppf x

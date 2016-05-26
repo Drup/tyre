@@ -47,7 +47,7 @@ val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 val seq : 'a t -> 'b t -> ('a * 'b) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
 
-val prefix : (_ t * string) -> 'a t -> 'a t
+val prefix : ('b t * 'b) -> 'a t -> 'a t
 (** [prefix (tyre_i, s) tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result.
 
     [s] is the witness used for {{!eval}evaluation}. It is assumed (but not checked) that [tyre_i] matches [s].
@@ -59,7 +59,7 @@ val prefixstr : string -> 'a t -> 'a t
     It is equal to [prefix (regex (Re.str s), s) tyre].
 *)
 
-val suffix : 'a t -> (_ t * string) -> 'a t
+val suffix : 'a t -> ('b t * 'b) -> 'a t
 (** Same as [prefix], but reversed. *)
 
 val suffixstr : 'a t -> string -> 'a t
@@ -83,10 +83,10 @@ val ( *>) :  string -> 'a t -> 'a t
 val (<* ) : 'a t -> string -> 'a t
 (** [t <* s] is [suffixstr s t]. *)
 
-val ( **>) : (_ t * string) -> 'a t -> 'a t
+val ( **>) : ('b t * 'b) -> 'a t -> 'a t
 (** [ (ti,s) **> t ] is [prefix (ti,s) t]. *)
 
-val (<** ) : 'a t -> (_ t * string) -> 'a t
+val (<** ) : 'a t -> ('b t * 'b) -> 'a t
 (** [ t <** (ti,s) ] is [suffix t (ti,s)]. *)
 
 (** {3 Useful combinators} *)
