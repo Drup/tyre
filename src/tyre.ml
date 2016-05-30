@@ -1,33 +1,52 @@
 
 let map_snd f (x,y) = (x, f y)
+let map_3 f (x,y,z) = (x, y, f z)
 
 (** {2 The various types} *)
 
-type ('a, 'b) conv = {
-  to_ : 'a -> 'b ;
-  from_ : 'b -> 'a ;
-}
-
 type 'a gen = unit -> 'a option
 
-type 'a t =
-  (* We store a compiled regex to efficiently check string when unparsing. *)
-  | Regexp : Re.t * Re.re Lazy.t -> string t
-  | Conv   : 'a t * ('a, 'b) conv -> 'b t
-  | Opt    : 'a t -> ('a option) t
-  | Alt    : 'a t * 'b t -> [`Left of 'a | `Right of 'b] t
-  | Seq    : 'a t * 'b t -> ('a * 'b) t
-  | Prefix : 'b t * 'b * 'a t -> 'a t
-  | Suffix : 'a t * 'b * 'b t  -> 'a t
-  | Rep   : 'a t -> 'a gen t
+module Types = struct
 
-let regex x =
+  type ('a, 'b) conv = {
+    to_ : 'a -> 'b ;
+    from_ : 'b -> 'a ;
+  }
+
+  type 'a raw =
+    (* We store a compiled regex to efficiently check string when unparsing. *)
+    | Regexp : Re.t * Re.re Lazy.t -> string raw
+    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
+    | Opt    : 'a raw -> ('a option) raw
+    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
+    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
+    | Prefix : 'b raw * 'b * 'a raw -> 'a raw
+    | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
+    | Rep   : 'a raw -> 'a gen raw
+
+  type _ wit =
+    | Regexp : Re.t -> string wit
+    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Opt    : Re.markid * int * 'a wit -> 'a option wit
+    | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
+      -> [`Left of 'a | `Right of 'b] wit
+    | Seq    :
+        'a wit * 'b wit -> ('a * 'b) wit
+    | Rep   : 'a wit * Re.re -> 'a gen wit
+
+end
+
+open Types
+
+type 'a t = 'a raw
+
+let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
-let conv to_ from_ x = Conv (x, {to_; from_})
+let conv to_ from_ x : _ t = Conv (x, {to_; from_})
 
-let seq a b = Seq (a, b)
-let alt a b = Alt (a, b)
+let seq a b : _ t = Seq (a, b)
+let alt a b : _ t = Alt (a, b)
 
 let (<?>) = alt
 let (<*>) = seq
@@ -36,14 +55,14 @@ let prefix (x,s) a = Prefix (x, s, a)
 let suffix a (x,s) = Suffix (a, s, x)
 let prefixstr s a = prefix (regex (Re.str s), s) a
 let suffixstr a s = suffix a (regex (Re.str s), s)
-let opt a = Opt a
+let opt a : _ t = Opt a
 
 let ( *>) = prefixstr
 let (<* ) = suffixstr
 let ( **>) = prefix
 let (<** ) = suffix
 
-let rep x = Rep x
+let rep x : _ t = Rep x
 let rep1 x = x <*> rep x
 
 module Regex = struct
@@ -139,92 +158,71 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
     to be able to guess the branch matched.
 *)
 
-type _ wit =
-  | Regexp : Re.t -> string wit
-  | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-  | Opt    : Re.markid * 'a wit -> 'a option wit
-  | Alt    : Re.markid * 'a wit * Re.markid * 'b wit
-    -> [`Left of 'a | `Right of 'b] wit
-  | Seq    :
-      'a wit * 'b wit -> ('a * 'b) wit
-  | Rep   : 'a wit * Re.re -> 'a gen wit
-
-(** Count the matching groups the regexp encoding some atom will have. *)
-let rec count_group
-  : type a. a wit -> int
-  = function
-    | Regexp _ -> 1
-    | Conv (e, _) -> count_group e
-    | Opt (_,e) -> count_group e
-    | Alt (_,e1,_,e2) -> count_group e1 + count_group e2
-    | Seq (e1,e2) -> count_group e1 + count_group e2
-    | Rep _ -> 1
-
-let incrg e i = i + count_group e
-
-
 let rec build
-  : type a. a t -> a wit * Re.t
+  : type a. a t -> int * a wit * Re.t
   = let open Re in function
-    | Regexp (re, _) -> Regexp re, group @@ no_group re
+    | Regexp (re, _) ->
+      1, Regexp re, group @@ no_group re
     | Conv (e, conv) ->
-      let w, re = build e in
-      Conv (w, conv), re
+      let i, w, re = build e in
+      i, Conv (w, conv), re
     | Opt e ->
-      let w, (id, re) = map_snd mark @@ build e in
-      Opt (id,w), alt [epsilon ; re]
+      let i, w, (id, re) = map_3 mark @@ build e in
+      i, Opt (id,i,w), alt [epsilon ; re]
     | Alt (e1,e2) ->
-      let w1, (id1, re1) = map_snd mark @@ build e1 in
-      let w2, (id2, re2) = map_snd mark @@ build e2 in
-      Alt (id1, w1, id2, w2), alt [re1 ; re2]
+      let i1, w1, (id1, re1) = map_3 mark @@ build e1 in
+      let i2, w2, (id2, re2) = map_3 mark @@ build e2 in
+      let grps = i1 + i2 in
+      grps, Alt (id1, i1, w1, id2, w2), alt [re1 ; re2]
     | Prefix (e_ign,_,e) ->
-      let w, re = build e in
-      let _, re_ign = build e_ign in
-      w, seq [no_group re_ign ; re]
+      let i, w, re = build e in
+      let _, _, re_ign = build e_ign in
+      i, w, seq [no_group re_ign ; re]
     | Suffix (e,_,e_ign) ->
-      let w, re = build e in
-      let _, re_ign = build e_ign in
-      w, seq [re ; no_group re_ign]
+      let i, w, re = build e in
+      let _, _, re_ign = build e_ign in
+      i, w, seq [re ; no_group re_ign]
     | Seq (e1,e2) ->
-      let w1, re1 = build e1 in
-      let w2, re2 = build e2 in
-      Seq (w1, w2), seq [re1; re2]
+      let i1, w1, re1 = build e1 in
+      let i2, w2, re2 = build e2 in
+      let grps = i1 + i2 in
+      grps, Seq (w1, w2), seq [re1; re2]
     | Rep e ->
-      let w, re = build e in
-      Rep (w,Re.compile re), group @@ rep @@ no_group re
+      let _, w, re = build e in
+      1, Rep (w,Re.compile re), group @@ rep @@ no_group re
 
 (** {3 Extraction.} *)
 
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
 *)
-let rec extract_aux
+let rec extract
   : type a. a wit -> int -> Re.substrings -> int * a
   = fun rea i s -> match rea with
-    | Regexp _ -> incrg rea i, Re.get s i
+    | Regexp _ -> i+1, Re.get s i
     | Conv (w, conv) ->
-      let i, v = extract_aux w i s in
+      let i, v = extract w i s in
       i, conv.to_ v
-    | Opt (id,w) ->
-      if not @@ Re.marked s id then incrg rea i, None
-      else map_snd (fun x -> Some x) @@ extract_aux w i s
-    | Alt (i1,w1,id2,w2) ->
+    | Opt (id,grps,w) ->
+      if not @@ Re.marked s id then i+grps, None
+      else map_snd (fun x -> Some x) @@ extract w i s
+    | Alt (i1,grps,w1,id2,w2) ->
       if Re.marked s i1 then
-        map_snd (fun x -> `Left x) @@ extract_aux w1 i s
+        map_snd (fun x -> `Left x) @@ extract w1 i s
       else if Re.marked s id2 then
-        map_snd (fun x -> `Right x) @@ extract_aux w2 (incrg w1 i) s
+        map_snd (fun x -> `Right x) @@ extract w2 (i+grps) s
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
         assert false
     | Seq (e1,e2) ->
-      let i, v1 = extract_aux e1 i s in
-      let i, v2 = extract_aux e2 i s in
+      let i, v1 = extract e1 i s in
+      let i, v2 = extract e2 i s in
       i, (v1, v2)
     | Rep (e,re) -> i+1, extract_list e re i s
 
-and extract
+and extract_top
   : type a . a wit -> Re.substrings -> a
-  = fun e s -> snd @@ extract_aux e 1 s
+  = fun e s -> snd @@ extract e 1 s
 
 (** We need to re-match the string for lists, in order to extract
     all the elements.
@@ -235,7 +233,7 @@ and extract
 and extract_list
   : type a. a wit -> Re.re -> int -> Re.substrings -> a gen
   = fun e re i s ->
-    let aux = extract e in
+    let aux = extract_top e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
     (* The whole original string, no copy! *)
@@ -251,7 +249,7 @@ let route re f = Route (re, f)
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.markid * 'a wit * ('a -> 'r) -> 'r wit_route
+    WRoute : Re.markid * int * 'a wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -259,21 +257,24 @@ type 'r wit_route =
 let rec build_route_aux rel wl = function
   | [] -> List.rev rel, List.rev wl
   | Route (tre, f) :: l ->
-    let wit, re = build tre in
+    let grps, wit, re = build tre in
     let id, re = Re.mark re in
-    let w = WRoute (id, wit, f) in
+    let w = WRoute (id, grps, wit, f) in
     build_route_aux (re::rel) (w::wl) l
 
 let build_route l = build_route_aux [] [] l
 
-let rec extract_route subs = function
+let rec extract_route i subs = function
   | [] ->
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
-  | WRoute (id, wit, f) :: l ->
-    if Re.marked subs id then f @@ extract wit subs
-    else extract_route subs l
+  | WRoute (id, grps, wit, f) :: l ->
+    if Re.marked subs id then
+      let _, v = extract wit i subs in f v
+    else
+      extract_route (i+grps) subs l
 
+let extract_route_top subs l = extract_route 1 subs l
 
 (** {4 Compilation and execution} *)
 
@@ -284,7 +285,7 @@ type 'r info =
 type 'a re = { info : 'a info ; cre : Re.re }
 
 let compile tre =
-  let wit, re = build tre in
+  let _, wit, re = build tre in
   let cre = Re.(compile @@ whole_string re) in
   { info = One wit ; cre }
 
@@ -297,5 +298,15 @@ let exec ?pos ?len { info ; cre } s =
   match Re.exec_opt ?pos ?len cre s with
   | None -> None
   | Some subs -> match info with
-    | One wit -> Some (extract wit subs)
-    | Routes wl -> Some (extract_route subs wl)
+    | One wit -> Some (extract_top wit subs)
+    | Routes wl -> Some (extract_route_top subs wl)
+
+module Internal = struct
+  include Types
+
+  let to_t x = x
+  let from_t x = x
+
+  let build = build
+  let extract = extract
+end

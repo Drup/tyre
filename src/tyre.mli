@@ -174,3 +174,41 @@ let my_pp = Tyre.evalpp tyre in
 Format.printf "%a@." my_pp v
 ]}
 *)
+
+
+(** Internal types *)
+module Internal : sig
+
+  type ('a, 'b) conv = {
+    to_ : 'a -> 'b ;
+    from_ : 'b -> 'a ;
+  }
+
+  type 'a raw =
+    (* We store a compiled regex to efficiently check string when unparsing. *)
+    | Regexp : Re.t * Re.re Lazy.t -> string raw
+    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
+    | Opt    : 'a raw -> ('a option) raw
+    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
+    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
+    | Prefix : 'b raw * 'b * 'a raw -> 'a raw
+    | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
+    | Rep   : 'a raw -> 'a Gen.t raw
+
+  val from_t : 'a t -> 'a raw
+  val to_t : 'a raw -> 'a t
+
+  type _ wit =
+    | Regexp : Re.t -> string wit
+    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Opt    : Re.markid * int * 'a wit -> 'a option wit
+    | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
+      -> [`Left of 'a | `Right of 'b] wit
+    | Seq    :
+        'a wit * 'b wit -> ('a * 'b) wit
+    | Rep   : 'a wit * Re.re -> 'a Gen.t wit
+
+  val build : 'a raw -> int * 'a wit * Re.t
+  val extract : 'a wit -> int -> Re.substrings -> int * 'a
+
+end
