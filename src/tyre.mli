@@ -20,12 +20,14 @@ val regex : Re.t -> string t
     Groups inside [re] are erased.
 *)
 
-val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
-(** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type. For example, this is the implementation of {!pos_int}:
+val conv : name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a t -> 'b t
+(** [conv ~name to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type. For example, this is the implementation of {!pos_int}:
 
 {[
-let pos_int = Tyre.conv int_of_string string_of_int (Tyre.regex (Re.rep1 Re.digit))
+let pos_int = Tyre.conv (try_ int_of_string) string_of_int (Tyre.regex (Re.rep1 Re.digit))
 ]}
+
+The [to_] part of the converter is allowed to fail, by returning [None]. If it does, {!exec} will return [`ConverterFailure (name, s)] with [s] the substring on which the converter was called.
 *)
 
 val opt : 'a t -> 'a option t
@@ -189,15 +191,17 @@ val pp_re : Format.formatter -> 'a re -> unit
 (** Internal types *)
 module Internal : sig
 
+  exception ConverterFailure of string * string
+
   type ('a, 'b) conv = {
-    to_ : 'a -> 'b ;
+    to_ : 'a -> 'b option ;
     from_ : 'b -> 'a ;
   }
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
+    | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
@@ -210,7 +214,7 @@ module Internal : sig
 
   type _ wit =
     | Regexp : Re.t -> string wit
-    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
     | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
       -> [`Left of 'a | `Right of 'b] wit

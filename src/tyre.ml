@@ -9,14 +9,14 @@ type 'a gen = unit -> 'a option
 module Types = struct
 
   type ('a, 'b) conv = {
-    to_ : 'a -> 'b ;
+    to_ : 'a -> 'b option ;
     from_ : 'b -> 'a ;
   }
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
+    | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
@@ -26,7 +26,7 @@ module Types = struct
 
   type _ wit =
     | Regexp : Re.t -> string wit
-    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
     | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
@@ -43,7 +43,7 @@ type 'a t = 'a raw
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
-let conv to_ from_ x : _ t = Conv (x, {to_; from_})
+let conv ~name to_ from_ x : _ t = Conv (name, x, {to_; from_})
 
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
@@ -85,28 +85,31 @@ module Regex = struct
 
 end
 
+let try_ f x = match f x with v -> Some v | exception _ -> None
+let some f x = Some (f x)
+
 let pos_int =
-  conv int_of_string string_of_int (regex Regex.pos_int)
+  conv "pos_int" (try_ int_of_string) string_of_int (regex Regex.pos_int)
 
 let int =
-  conv int_of_string string_of_int (regex Regex.int)
+  conv "int" (try_ int_of_string) string_of_int (regex Regex.int)
 
 let float =
-  conv float_of_string string_of_float (regex Regex.float)
+  conv "float" (try_ float_of_string) string_of_float (regex Regex.float)
 
 let bool =
-  conv bool_of_string string_of_bool (regex Regex.bool)
+  conv "bool" (try_ bool_of_string) string_of_bool (regex Regex.bool)
 
 let list e =
-  conv Gen.to_list Gen.of_list (rep e)
+  conv "list" (some Gen.to_list) Gen.of_list (rep e)
 
 let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
   let e = opt (e <*> list (sep *> e)) in
-  let to_ = function None -> [] | Some (h, t) -> h :: t
+  let to_ = function None -> Some [] | Some (h, t) -> Some (h :: t)
   and from_ = function [] -> None | h :: t -> Some (h, t)
   in
-  conv to_ from_ e
+  conv "separated list" to_ from_ e
 
 (** {2 Evaluation functions} *)
 
@@ -126,7 +129,7 @@ let rec evalpp
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
         pstr ppf v
       end
-    | Conv (tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
+    | Conv (_, tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
     | Opt p -> begin function
         | None -> pstr ppf ""
         | Some x -> evalpp p ppf x
@@ -163,9 +166,9 @@ let rec build
   = let open Re in function
     | Regexp (re, _) ->
       1, Regexp re, group @@ no_group re
-    | Conv (e, conv) ->
+    | Conv (name , e, conv) ->
       let i, w, re = build e in
-      i, Conv (w, conv), re
+      i, Conv (name, w, conv), re
     | Opt e ->
       let i, w, (id, re) = map_3 mark @@ build e in
       i, Opt (id,i,w), alt [epsilon ; re]
@@ -193,6 +196,8 @@ let rec build
 
 (** {3 Extraction.} *)
 
+exception ConverterFailure of string * string
+
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
 *)
@@ -200,9 +205,12 @@ let rec extract
   : type a. a wit -> int -> Re.substrings -> int * a
   = fun rea i s -> match rea with
     | Regexp _ -> i+1, Re.get s i
-    | Conv (w, conv) ->
+    | Conv (name, w, conv) ->
       let i, v = extract w i s in
-      i, conv.to_ v
+      begin match conv.to_ v with
+        | Some v -> (i, v)
+        | None -> raise (ConverterFailure (name, Re.get s i))
+      end
     | Opt (id,grps,w) ->
       if not @@ Re.marked s id then i+grps, None
       else map_snd (fun x -> Some x) @@ extract w i s
@@ -274,7 +282,7 @@ let rec extract_route i subs = function
     else
       extract_route (i+grps) subs l
 
-let extract_route_top subs l = extract_route 1 subs l
+let extract_route_top l subs = extract_route 1 subs l
 
 (** {4 Compilation and execution} *)
 
@@ -303,9 +311,15 @@ type 'a error = [
 let exec ?pos ?len ({ info ; cre } as tcre) s =
   match Re.exec_opt ?pos ?len cre s with
   | None -> Result.Error (`NoMatch (tcre, s))
-  | Some subs -> match info with
-    | One wit -> Result.Ok (extract_top wit subs)
-    | Routes wl -> Result.Ok (extract_route_top subs wl)
+  | Some subs ->
+    let f = match info with
+      | One wit -> extract_top wit
+      | Routes wl -> extract_route_top wl
+    in
+    try
+      Result.Ok (f subs)
+    with ConverterFailure (name, s) ->
+      Result.Error (`ConverterFailure (name, s))
 
 (** Pretty printers *)
 
@@ -359,6 +373,8 @@ module Internal = struct
 
   let to_t x = x
   let from_t x = x
+
+  exception ConverterFailure = ConverterFailure
 
   let build = build
   let extract = extract
