@@ -77,7 +77,7 @@ val (<?>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 (** [t <?> t'] is [alt t t']. *)
 
 val (<*>) : 'a t -> 'b t -> ('a * 'b) t
-(** [t <?> t'] is [seq t t']. *)
+(** [t <*> t'] is [seq t t']. *)
 
 val ( *>) :  string -> 'a t -> 'a t
 (** [s *> t] is [prefixstr s t]. *)
@@ -96,13 +96,13 @@ val (<** ) : 'a t -> ('b t * 'b) -> 'a t
 val int : int t
 (** [int] matches [-?[0-9]+] and returns the matched integer.
 
-    Integers that do not fit in an [int] fails with [Failure "int_of_string"].
+    Integers that do not fit in an [int] will fail.
 *)
 
 val pos_int : int t
 (** [pos_int] matches [[0-9]+] and returns the matched positive integer.
 
-    Integers that do not fit in an [int] fails with [Failure "int_of_string"].
+    Integers that do not fit in an [int] will fail.
 *)
 
 val float : float t
@@ -140,7 +140,8 @@ val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.resu
 (** [exec ctyre s] matches the string [s] using
     the compiled tyregex [ctyre] and returns the extracted value.
 
-    Returns [None] if the tyregex doesn't match.
+    Returns [Error (`NoMatch (tyre, s)] if [tyre] doesn't match [s].
+    Returns [Error (`ConverterFailure (name, s))] if the converter named [name] failed while trying to convert the substring [s].
 
     @param pos optional beginning of the string (default 0)
     @param len length of the substring of [str] that can be matched (default to the end of the string)
