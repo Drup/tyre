@@ -29,5 +29,6 @@ depends: [
   "re" {>= "1.4.0"}
   "oasis" {dev & build}
   "alcotest" {test}
+  "result"
   "gen"
 ]

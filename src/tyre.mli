@@ -129,7 +129,12 @@ type 'a re
 val compile : 'a t -> 'a re
 (** [compile tyre] is the compiled tyregex representing [tyre]. *)
 
-val exec : ?pos:int -> ?len:int -> 'a re -> string -> 'a option
+type 'a error = [
+  | `NoMatch of 'a re * string
+  | `ConverterFailure of string * string
+]
+
+val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.result
 (** [exec ctyre s] matches the string [s] using
     the compiled tyregex [ctyre] and returns the extracted value.
 

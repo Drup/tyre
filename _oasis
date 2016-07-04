@@ -13,7 +13,7 @@ AlphaFeatures: ocamlbuild_more_args
 
 Library tyre
   Path: src
-  BuildDepends: re, gen
+  BuildDepends: re, gen, result
   Modules: Tyre
 
 AlphaFeatures: ocamlbuild_more_args

@@ -294,12 +294,19 @@ let route l =
   let cre = Re.(compile @@ whole_string @@ alt rel) in
   { info = Routes wl ; cre }
 
-let exec ?pos ?len { info ; cre } s =
+
+type 'a error = [
+  | `NoMatch of 'a re * string
+  | `ConverterFailure of string * string
+]
+
+let exec ?pos ?len ({ info ; cre } as tcre) s =
   match Re.exec_opt ?pos ?len cre s with
-  | None -> None
+  | None -> Result.Error (`NoMatch (tcre, s))
   | Some subs -> match info with
-    | One wit -> Some (extract_top wit subs)
-    | Routes wl -> Some (extract_route_top subs wl)
+    | One wit -> Result.Ok (extract_top wit subs)
+    | Routes wl -> Result.Ok (extract_route_top subs wl)
+
 
 module Internal = struct
   include Types
