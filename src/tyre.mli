@@ -180,6 +180,11 @@ Format.printf "%a@." my_pp v
 ]}
 *)
 
+(** {2:pp Pretty printing} *)
+
+val pp : Format.formatter -> 'a t -> unit
+
+val pp_re : Format.formatter -> 'a re -> unit
 
 (** Internal types *)
 module Internal : sig

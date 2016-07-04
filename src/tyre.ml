@@ -307,6 +307,52 @@ let exec ?pos ?len ({ info ; cre } as tcre) s =
     | One wit -> Result.Ok (extract_top wit subs)
     | Routes wl -> Result.Ok (extract_route_top subs wl)
 
+(** Pretty printers *)
+
+let sexp ppf s fmt = Format.fprintf ppf ("@[<3>(%s@ "^^fmt^^")@]") s
+
+(* Only in the stdlib since 4.02, so we copy. *)
+let rec pp_list pp ppf = function
+  | [] -> ()
+  | [v] -> pp ppf v
+  | v :: vs ->
+    pp ppf v;
+    Format.pp_print_space ppf ();
+    pp_list pp ppf vs
+
+let rec pp
+  : type a. _ -> a t -> unit
+  = fun ppf -> function
+  | Regexp (re,_) -> sexp ppf "Re" "%a" Re.pp re
+  | Conv (name,tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp tre
+  | Opt tre -> sexp ppf "Opt" "%a" pp tre
+  | Alt (tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp tre1 pp tre2
+  | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp tre1 pp tre2
+  | Prefix (tre1, v, tre2) ->
+    sexp ppf "Prefix" "%a@ %s@ %a" pp tre1 (eval tre1 v) pp tre2
+  | Suffix (tre1, v, tre2) ->
+    sexp ppf "Suffix" "%a@ %s@ %a" pp tre1 (eval tre2 v) pp tre2
+  | Rep tre -> sexp ppf "Rep" "%a" pp tre
+
+let rec pp_wit
+  : type a. _ -> a wit -> unit
+  = fun ppf -> function
+  | Regexp re -> sexp ppf "Re" "%a" Re.pp re
+  | Conv (name, tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp_wit tre
+  | Opt (_, _, tre) -> sexp ppf "Opt" "%a" pp_wit tre
+  | Alt (_, _, tre1, _, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | Rep (w, re) -> sexp ppf "Rep" "%a@ %a" pp_wit w Re.pp_re re
+
+let pp_wit_route
+  : type a. _ -> a wit_route -> unit
+  = fun ppf (WRoute (_,_,w,_)) -> pp_wit ppf w
+
+let pp_re ppf = function
+  | { info = One w; cre } ->
+    sexp ppf "One" "%a@ %a" Re.pp_re cre pp_wit w
+  | { info = Routes wl; cre } ->
+    sexp ppf "Route" "%a@ %a" Re.pp_re cre (pp_list pp_wit_route) wl
 
 module Internal = struct
   include Types
