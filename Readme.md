@@ -6,7 +6,18 @@ Tyre is bi-directional: a typed regular expressions can be used for parsing and 
 
 Tyre is pure OCaml and uses [re][].
 
-Documentation is available [here][doc].
+Documentation is available [here][doc] See also the [examples/](examples/) directory.
 
 [re]: https://github.com/ocaml/ocaml-re
 [doc]: https://drup.github.io/tyre/dev/Tyre.html
+
+```ocaml
+# let dim = Tyre.( "dim:" *> int <*> "x" *> int ) ;;
+val dim : (int * int) Tyre.t
+# let dim_re = Tyre.compile dim ;;
+val dim_re : (int * int) Tyre.re
+# Tyre.exec dim_re "dim:3x4" ;;
+- : (int * int, (int * int) Tyre.error) result = Result.Ok (3, 4)
+# Tyre.eval dim (2, 5) ;;
+- : string = "dim:2x5"
+```
