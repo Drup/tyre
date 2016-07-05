@@ -1,4 +1,22 @@
-module A = Alcotest
+module A = struct
+  include Alcotest
+  let choice
+      (type a) (type b)
+      (module M1 : TESTABLE with type t = a)
+      (module M2 : TESTABLE with type t = b)
+    : (module TESTABLE with type t = [`Left of M1.t | `Right of M2.t])
+    = (module struct
+    type t = [`Left of M1.t | `Right of M2.t]
+    let pp ppf = function
+      | `Left x -> M1.pp ppf x
+      | `Right x -> M2.pp ppf x
+    let equal x y = match x, y with
+      | `Left x, `Left y -> M1.equal x y
+      | `Right x, `Right y -> M2.equal x y
+      | _ -> false
+  end)
+end
+
 open Tyre
 
 let t' title desc re v s =
@@ -48,6 +66,12 @@ let prefix_suffix = [
 
 let composed = [
   topt "option prefix" A.int (opt int <* "foo") 3 "3foo" "foo" ;
+  t "terminated list" A.(list int) (terminated_list ~sep:";" int)
+    [1;254;3;54;] "1;254;3;54;" ;
+  t "separated list" A.(list int) (separated_list ~sep:";" int)
+    [1;254;3;54] "1;254;3;54" ;
+  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <?> regex Re.alpha))
+    [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c"
 ]
 
 let routes =
