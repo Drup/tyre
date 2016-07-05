@@ -14,7 +14,7 @@ make doc
 if [ -z "$TRAVIS"
      -o "$TRAVIS_PULL_REQUEST" != "false"
      -o "$TRAVIS_BRANCH" != "master"
-     -o "DOC" != "true"
+     -o "$DOC" != "true"
    ]; then
   echo "This is not a push Travis-ci build, doing nothing..."
   exit 0
@@ -22,12 +22,13 @@ else
   echo "Updating docs on Github pages..."
 fi
 
-DOCDIR=.gh-pages/
+DOCDIR=.gh-pages
 
 # Error out if $GH_TOKEN is empty or unset
 : ${GH_TOKEN:?"GH_TOKEN need to be uploaded via travis-encrypt"}
 
-make .gh-pages/.git 2>&1 | sed -e "s/$GH_TOKEN/!REDACTED!/g"
+git clone https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG} $DOCDIR 2>&1 | sed -e "s/$GH_TOKEN/!REDACTED!/g"
+git -C $DOCDIR checkout gh-pages || git -C $DOCDIR checkout --orphan gh-pages
 
 rm -rf $DOCDIR/dev/*
 cp _build/*.docdir/* $DOCDIR/dev
