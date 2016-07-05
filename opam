@@ -5,7 +5,7 @@ maintainer: "Gabriel Radanne <drupyog@zoho.com>"
 authors: "Gabriel Radanne <drupyog@zoho.com>"
 homepage: "https://github.com/Drup/tyre"
 bug-reports: "https://github.com/Drup/tyre/issues"
-license: "MIT"
+license: "ISC"
 dev-repo: "https://github.com/Drup/tyre.git"
 tags: [ "regex" ]
 
