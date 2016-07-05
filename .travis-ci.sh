@@ -23,7 +23,6 @@ else
 fi
 
 DOCDIR=.gh-pages/
-if [ -n "$KEEP" ]; then trap "rm -rf $DOCDIR" EXIT; fi
 
 # Error out if $GH_TOKEN is empty or unset
 : ${GH_TOKEN:?"GH_TOKEN need to be uploaded via travis-encrypt"}
