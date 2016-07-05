@@ -39,3 +39,29 @@ configure:
 .PHONY: build doc test all install uninstall reinstall clean distclean configure
 
 # OASIS_STOP
+
+NAME    = $(shell grep 'Name:' _oasis    | sed 's/Name: *//')
+VERSION = $(shell grep 'Version:' _oasis | sed 's/Version: *//')
+
+# doc update
+
+DOCDIR=.gh-pages
+
+$(DOCDIR)/.git:
+	mkdir -p $(DOCDIR)
+	cd $(DOCDIR) && (\
+		git clone -b gh-pages git@github.com:Drup/$(NAME).git . \
+	)
+
+gh-pages: $(DOCDIR)/.git doc
+	rm -f $(DOCDIR)/dev/*
+	cp api.docdir/* $(DOCDIR)/dev/
+	git -C $(DOCDIR) add --all dev
+	git -C $(DOCDIR) commit -a -m "Doc updates"
+	git -C $(DOCDIR) push origin gh-pages
+
+# release
+
+release:
+	git tag -a $(VERSION) -m "Version $(VERSION)."
+	git push origin $(VERSION)
