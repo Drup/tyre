@@ -11,7 +11,11 @@ eval `opam config env`
 ./configure --enable-docs
 make doc
 
-if [ -z "$TRAVIS" -o "$TRAVIS_PULL_REQUEST" != "false" ]; then
+if [ -z "$TRAVIS"
+     -o "$TRAVIS_PULL_REQUEST" != "false"
+     -o "$TRAVIS_BRANCH" != "master"
+     -o "DOC" != "true"
+   ]; then
   echo "This is not a push Travis-ci build, doing nothing..."
   exit 0
 else
