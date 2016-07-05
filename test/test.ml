@@ -1,12 +1,10 @@
-module A = struct
-  include Alcotest
-  let float = of_pp Format.pp_print_float
-end
+module A = Alcotest
 open Tyre
 
 let t' title desc re v s =
   let cre = Tyre.compile re in
-  A.(check (option desc)) (title^" exec") (Tyre.exec cre s) (Some v) ;
+  A.(check (result desc reject))
+    (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
 let t title desc re v s =
