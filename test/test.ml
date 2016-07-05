@@ -50,8 +50,33 @@ let composed = [
   topt "option prefix" A.int (opt int <* "foo") 3 "3foo" "foo" ;
 ]
 
+let routes =
+  let fixed n = regex Re.(repn any n (Some n)) in
+  let f n x = n, x in
+  route [
+    ("foo" *> fixed 3 <* "xx") --> f 1 ;
+    ("foo" *> fixed 5) --> f 2 ;
+    ("bar" *> fixed 5) --> f 3 ;
+    (fixed 2 <* "blob") --> f 4 ;
+  ]
+
+let troute title s n res =
+  title, `Quick,
+  fun () ->
+    A.(check @@ result (pair int string) reject)
+      title (exec routes s) (Result.Ok (n,res))
+
+let route_test = [
+  troute "route 1" "foo123xx" 1 "123" ;
+  troute "route 2" "foo12345" 2 "12345" ;
+  troute "route 3" "bar12345" 3 "12345" ;
+  troute "route 4" "xxblob" 4 "xx" ;
+]
+
+
 let () = Alcotest.run "tyre" [
     "basics", basics ;
     "prefix suffix", prefix_suffix ;
     "composed", composed ;
+    "routes", route_test ;
   ]
