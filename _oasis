@@ -3,7 +3,7 @@ Name:        Tyre
 Version:     0.1
 Synopsis:    Typed Regular Expressions
 Authors:     Gabriel Radanne <drupyog@zoho.com>
-License:     MIT
+License:     ISC
 Plugins:     META (0.3), DevFiles (0.3)
 
 AlphaFeatures: pure_interface
@@ -13,7 +13,7 @@ AlphaFeatures: ocamlbuild_more_args
 
 Library tyre
   Path: src
-  BuildDepends: re, gen, result
+  BuildDepends: re, result
   Modules: Tyre
 
 AlphaFeatures: ocamlbuild_more_args

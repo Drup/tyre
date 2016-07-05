@@ -33,18 +33,25 @@ The [to_] part of the converter is allowed to fail, by returning [None]. If it d
 val opt : 'a t -> 'a option t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
 
-val rep : 'a t -> 'a Gen.t t
+val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+(** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
+*)
+
+(** {3 Repetitions} *)
+
+type 'a gen = unit -> 'a option
+(** A generator [g] will return a new value each time it's called, until it returns [None]. See {{:https://github.com/c-cube/gen/}gen}. *)
+
+val rep : 'a t -> 'a gen t
 (** [rep tyre] matches [tyre] zero or more times. Similar to {!Re.rep}.
 
     For {{!matching}matching}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
 *)
 
-val rep1 : 'a t -> ('a * 'a Gen.t) t
+val rep1 : 'a t -> ('a * 'a gen) t
 (** [rep1 tyre] is [seq tyre (rep tyre)]. Similar to {!Re.rep1}. *)
 
-val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
-(** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
-*)
+(** {3 Sequences} *)
 
 val seq : 'a t -> 'b t -> ('a * 'b) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
@@ -208,7 +215,7 @@ module Internal : sig
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
     | Prefix : 'b raw * 'b * 'a raw -> 'a raw
     | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
-    | Rep   : 'a raw -> 'a Gen.t raw
+    | Rep   : 'a raw -> 'a gen raw
 
   val from_t : 'a t -> 'a raw
   val to_t : 'a raw -> 'a t
@@ -221,7 +228,7 @@ module Internal : sig
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : 'a wit * Re.re -> 'a Gen.t wit
+    | Rep   : 'a wit * Re.re -> 'a gen wit
 
   val build : 'a raw -> int * 'a wit * Re.t
   val extract : 'a wit -> int -> Re.substrings -> int * 'a

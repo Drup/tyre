@@ -1,4 +1,32 @@
 
+(** Copied from gen.ml *)
+module Gen = struct
+
+  let map f gen =
+    let stop = ref false in
+    fun () ->
+      if !stop then None
+      else match gen() with
+        | None -> stop:= true; None
+        | Some x -> Some (f x)
+
+  (* Copied from gen.ml *)
+  let of_list l =
+    let l = ref l in
+    fun () ->
+      match !l with
+      | [] -> None
+      | x::l' -> l := l'; Some x
+  let rec fold f acc gen =
+    match gen () with
+    | None -> acc
+    | Some x -> fold f (f acc x) gen
+  let to_rev_list gen =
+    fold (fun acc x -> x :: acc) [] gen
+  let to_list gen = List.rev (to_rev_list gen)
+
+end
+
 let map_snd f (x,y) = (x, f y)
 let map_3 f (x,y,z) = (x, y, f z)
 
