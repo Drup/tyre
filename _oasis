@@ -6,6 +6,8 @@ Authors:     Gabriel Radanne <drupyog@zoho.com>
 License:     ISC
 Plugins:     META (0.3), DevFiles (0.3)
 
+OCamlVersion: >= 4.02.0
+
 AlphaFeatures: pure_interface
 BuildTools: ocamlbuild
 
