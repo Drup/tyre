@@ -1,3 +1,5 @@
+[@@@ocaml.warning "-44"]
+
 module A = struct
   include Alcotest
   let choice

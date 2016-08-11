@@ -109,7 +109,7 @@ let rep x : _ t = Rep x
 let rep1 x = x <*> rep x
 
 module Regex = struct
-  open Re
+  open! Re
 
   (** [0-9]+ *)
   let pos_int = rep1 digit
@@ -206,7 +206,7 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
 
 let rec build
   : type a. a t -> int * a wit * Re.t
-  = let open Re in function
+  = let open! Re in function
     | Regexp (re, _) ->
       1, Regexp re, group @@ no_group re
     | Conv (name , e, conv) ->
@@ -337,12 +337,12 @@ type 'a re = { info : 'a info ; cre : Re.re }
 
 let compile tre =
   let _, wit, re = build tre in
-  let cre = Re.(compile @@ whole_string re) in
+  let cre = Re.compile @@ Re.whole_string re in
   { info = One wit ; cre }
 
 let route l =
   let rel, wl = build_route l in
-  let cre = Re.(compile @@ whole_string @@ alt rel) in
+  let cre = Re.compile @@ Re.whole_string @@ Re.alt rel in
   { info = Routes wl ; cre }
 
 
