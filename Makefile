@@ -41,7 +41,7 @@ configure:
 # OASIS_STOP
 
 NAME    = $(shell grep 'Name:' _oasis    | sed 's/Name: *//')
-VERSION = $(shell grep 'Version:' _oasis | sed 's/Version: *//')
+VERSION = $(shell grep '^Version:' _oasis | sed 's/Version: *//')
 
 # doc update
 
