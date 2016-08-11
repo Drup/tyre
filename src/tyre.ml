@@ -350,14 +350,16 @@ type 'r info =
 
 type 'a re = { info : 'a info ; cre : Re.re }
 
-let compile tre =
+let compile ?(whole=true) tre =
+  let modf = if whole then Re.whole_string else fun x -> x in
   let _, wit, re = build tre in
-  let cre = Re.compile @@ Re.whole_string re in
+  let cre = Re.compile @@ modf re in
   { info = One wit ; cre }
 
-let route l =
+let route ?(whole=true) l =
+  let modf = if whole then Re.whole_string else fun x -> x in
   let rel, wl = build_route l in
-  let cre = Re.compile @@ Re.whole_string @@ Re.alt rel in
+  let cre = Re.compile @@ modf @@ Re.alt rel in
   { info = Routes wl ; cre }
 
 

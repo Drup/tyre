@@ -164,8 +164,10 @@ val nest : 'a t -> 'a t
 type 'a re
 (** A compiled typed regular expression. *)
 
-val compile : 'a t -> 'a re
-(** [compile tyre] is the compiled tyregex representing [tyre]. *)
+val compile : ?whole:bool -> 'a t -> 'a re
+(** [compile tyre] is the compiled tyregex representing [tyre].
+    if [whole] is [true] (the default), the whole string is matched.
+*)
 
 type 'a error = [
   | `NoMatch of 'a re * string
@@ -194,9 +196,10 @@ type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
 val (-->) : 'x t -> ('x -> 'a) -> 'a route
 (** [tyre --> f] is [Route (tyre, f)]. *)
 
-val route : 'a route list -> 'a re
+val route : ?whole:bool -> 'a route list -> 'a re
 (** [route [ tyre1 --> f1 ; tyre2 --> f2 ]] produces a compiled
     tyregex such that, if [tyre1] matches, [f1] is called, and so on.
+    if [whole] is [true] (the default), the whole string is matched.
 
     The compiled tyregex shoud be used with {!exec}.
 *)
