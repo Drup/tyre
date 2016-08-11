@@ -146,6 +146,19 @@ val terminated_list : sep:string -> 'a t -> 'a list t
 val separated_list : sep:string -> 'a t -> 'a list t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <*> list (sep *> e))]. *)
 
+(** {3 Other combinators}
+
+    See {!Re} for details on the semantics of those combinators. *)
+
+val word : 'a t -> 'a t
+val whole_string : 'a t -> 'a t
+val longest : 'a t -> 'a t
+val shortest : 'a t -> 'a t
+val first : 'a t -> 'a t
+val greedy : 'a t -> 'a t
+val non_greedy : 'a t -> 'a t
+val nest : 'a t -> 'a t
+
 (** {2:matching Matching} *)
 
 type 'a re
@@ -231,7 +244,8 @@ module Internal : sig
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
     | Prefix : 'b raw * 'b * 'a raw -> 'a raw
     | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
-    | Rep   : 'a raw -> 'a gen raw
+    | Rep    : 'a raw -> 'a gen raw
+    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   val from_t : 'a t -> 'a raw
   val to_t : 'a raw -> 'a t

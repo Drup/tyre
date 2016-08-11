@@ -65,7 +65,8 @@ module Types = struct
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
     | Prefix : 'b raw * 'b * 'a raw -> 'a raw
     | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
-    | Rep   : 'a raw -> 'a gen raw
+    | Rep    : 'a raw -> 'a gen raw
+    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   type _ wit =
     | Regexp : Re.t -> string wit
@@ -107,6 +108,16 @@ let (<** ) = suffix
 
 let rep x : _ t = Rep x
 let rep1 x = x <*> rep x
+
+let modifier f re = Mod (f, re)
+let word re = modifier Re.word re
+let whole_string re = modifier Re.whole_string re
+let longest re = modifier Re.longest re
+let shortest re = modifier Re.shortest re
+let first re = modifier Re.first re
+let greedy re = modifier Re.greedy re
+let non_greedy re = modifier Re.non_greedy re
+let nest re = modifier Re.nest re
 
 module Regex = struct
   open! Re
@@ -190,6 +201,7 @@ let rec evalpp
       end
     | Rep tre ->
       pprep (evalpp tre) ppf
+    | Mod (_, tre) -> evalpp tre ppf
 
 let eval tre = Format.asprintf "%a" (evalpp tre)
 
@@ -236,6 +248,9 @@ let rec build
     | Rep e ->
       let _, w, re = build e in
       1, Rep (w,Re.compile re), group @@ rep @@ no_group re
+    | Mod (f, e) ->
+      let n, w, re = build e in
+      n, w, f re
 
 (** {3 Extraction.} *)
 
@@ -390,6 +405,7 @@ let rec pp
   | Suffix (tre1, v, tre2) ->
     sexp ppf "Suffix" "%a@ %s@ %a" pp tre1 (eval tre2 v) pp tre2
   | Rep tre -> sexp ppf "Rep" "%a" pp tre
+  | Mod (_,tre) -> sexp ppf "Mod" "%a" pp tre
 
 let rec pp_wit
   : type a. _ -> a wit -> unit
