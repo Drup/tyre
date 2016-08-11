@@ -1,4 +1,39 @@
 # OASIS_START
+# DO NOT EDIT (digest: bdbee63ac33b802de66d16c5226716be)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
+# useless stuff for the build process
+true: annot, bin_annot
+<**/.svn>: -traverse
+<**/.svn>: not_hygienic
+".bzr": -traverse
+".bzr": not_hygienic
+".hg": -traverse
+".hg": not_hygienic
+".git": -traverse
+".git": not_hygienic
+"_darcs": -traverse
+"_darcs": not_hygienic
+# Library tyre
+"src/tyre.cmxs": use_tyre
+<src/*.ml{,i,y}>: package(re)
+<src/*.ml{,i,y}>: package(result)
+# Executable test
+"test/test.byte": package(alcotest)
+"test/test.byte": package(re)
+"test/test.byte": package(result)
+"test/test.byte": use_tyre
+<test/*.ml{,i,y}>: package(alcotest)
+<test/*.ml{,i,y}>: package(re)
+<test/*.ml{,i,y}>: package(result)
+<test/*.ml{,i,y}>: use_tyre
+# Executable example_dim
+"examples/dims.byte": package(re)
+"examples/dims.byte": package(result)
+"examples/dims.byte": use_tyre
+<examples/*.ml{,i,y}>: package(re)
+<examples/*.ml{,i,y}>: package(result)
+<examples/*.ml{,i,y}>: use_tyre
 # OASIS_STOP
 
 true: warn(+A-6-40-42)

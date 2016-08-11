@@ -27,7 +27,6 @@ remove: ["ocamlfind" "remove" "tyre"]
 depends: [
   "ocamlfind" {build}
   "re" {>= "1.6.0"}
-  "oasis" {dev & build}
   "alcotest" {test & >= "0.6.0"}
   "result"
 ]
