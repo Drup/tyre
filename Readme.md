@@ -4,9 +4,13 @@ Tyre is a set of combinators to build type-safe regular expressions, allowing au
 
 Tyre is bi-directional: a typed regular expressions can be used for parsing and unparsing. It also allows routing, by providing a list of regexs/routes and their handlers.
 
-Tyre is pure OCaml and uses [re][].
+Tyre is pure OCaml and uses [re][]. To install it:
 
-Documentation is available [here][doc] See also the [examples/](examples/) directory.
+```
+opam install tyre
+```
+
+Documentation is available [here][doc]. See also the [examples/](examples/) directory.
 
 [re]: https://github.com/ocaml/ocaml-re
 [doc]: https://drup.github.io/tyre/dev/Tyre.html
