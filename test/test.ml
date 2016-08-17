@@ -73,7 +73,11 @@ let composed = [
   t "separated list" A.(list int) (separated_list ~sep:";" int)
     [1;254;3;54] "1;254;3;54" ;
   t "alt list" A.(list @@ choice string string) (list (regex Re.digit <?> regex Re.alpha))
-    [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c"
+    [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c" ;
+  t "list of list"
+    A.(list @@ list @@ choice int string)
+    (list @@ "@" *> list (pos_int <?> regex Re.alpha))
+    [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
 ]
 
 let routes =
