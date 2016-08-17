@@ -258,37 +258,39 @@ exception ConverterFailure of string * string
 
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
+
+    To avoid copy, we pass around the original string (and we use positions).
 *)
 let rec extract
-  : type a. a wit -> int -> Re.substrings -> int * a
-  = fun rea i s -> match rea with
+  : type a. original:string -> a wit -> int -> Re.substrings -> int * a
+  = fun ~original rea i s -> match rea with
     | Regexp _ -> i+1, Re.get s i
     | Conv (name, w, conv) ->
-      let i, v = extract w i s in
+      let i, v = extract ~original w i s in
       begin match conv.to_ v with
         | Some v -> (i, v)
         | None -> raise (ConverterFailure (name, Re.get s i))
       end
     | Opt (id,grps,w) ->
       if not @@ Re.marked s id then i+grps, None
-      else map_snd (fun x -> Some x) @@ extract w i s
+      else map_snd (fun x -> Some x) @@ extract ~original w i s
     | Alt (i1,grps,w1,id2,w2) ->
       if Re.marked s i1 then
-        map_snd (fun x -> `Left x) @@ extract w1 i s
+        map_snd (fun x -> `Left x) @@ extract ~original w1 i s
       else if Re.marked s id2 then
-        map_snd (fun x -> `Right x) @@ extract w2 (i+grps) s
+        map_snd (fun x -> `Right x) @@ extract ~original w2 (i+grps) s
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
         assert false
     | Seq (e1,e2) ->
-      let i, v1 = extract e1 i s in
-      let i, v2 = extract e2 i s in
+      let i, v1 = extract ~original e1 i s in
+      let i, v2 = extract ~original e2 i s in
       i, (v1, v2)
-    | Rep (e,re) -> i+1, extract_list e re i s
+    | Rep (e,re) -> i+1, extract_list ~original e re i s
 
 and extract_top
-  : type a . a wit -> Re.substrings -> a
-  = fun e s -> snd @@ extract e 1 s
+  : type a . original:string -> a wit -> Re.substrings -> a
+  = fun ~original e s -> snd @@ extract ~original e 1 s
 
 (** We need to re-match the string for lists, in order to extract
     all the elements.
@@ -297,13 +299,11 @@ and extract_top
     possible as it would be equivalent to counting in an automaton).
 *)
 and extract_list
-  : type a. a wit -> Re.re -> int -> Re.substrings -> a gen
-  = fun e re i s ->
-    let aux = extract_top e in
+  : type a. original:string -> a wit -> Re.re -> int -> Re.substrings -> a gen
+  = fun ~original e re i s ->
+    let aux = extract_top ~original e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
-    (* The whole original string, no copy! *)
-    let original = Re.get s 0 in
     Gen.map aux @@ Re.all_gen ~pos ~len re original
 
 (** {4 Multiple match} *)
@@ -330,17 +330,17 @@ let rec build_route_aux rel wl = function
 
 let build_route l = build_route_aux [] [] l
 
-let rec extract_route i subs = function
+let rec extract_route ~original i subs = function
   | [] ->
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
   | WRoute (id, grps, wit, f) :: l ->
     if Re.marked subs id then
-      let _, v = extract wit i subs in f v
+      let _, v = extract ~original wit i subs in f v
     else
-      extract_route (i+grps) subs l
+      extract_route ~original (i+grps) subs l
 
-let extract_route_top l subs = extract_route 1 subs l
+let extract_route_top ~original l subs = extract_route ~original 1 subs l
 
 (** {4 Compilation and execution} *)
 
@@ -368,13 +368,13 @@ type 'a error = [
   | `ConverterFailure of string * string
 ]
 
-let exec ?pos ?len ({ info ; cre } as tcre) s =
-  match Re.exec_opt ?pos ?len cre s with
-  | None -> Result.Error (`NoMatch (tcre, s))
+let exec ?pos ?len ({ info ; cre } as tcre) original =
+  match Re.exec_opt ?pos ?len cre original with
+  | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
     let f = match info with
-      | One wit -> extract_top wit
-      | Routes wl -> extract_route_top wl
+      | One wit -> extract_top ~original wit
+      | Routes wl -> extract_route_top ~original wl
     in
     try
       Result.Ok (f subs)

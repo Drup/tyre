@@ -264,6 +264,6 @@ module Internal : sig
     | Rep   : 'a wit * Re.re -> 'a gen wit
 
   val build : 'a raw -> int * 'a wit * Re.t
-  val extract : 'a wit -> int -> Re.substrings -> int * 'a
+  val extract : original:string -> 'a wit -> int -> Re.substrings -> int * 'a
 
 end
