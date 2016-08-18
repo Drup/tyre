@@ -211,6 +211,19 @@ val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
     @since 0.1.1
 *)
 
+
+(** {3:repeat Repeated Matching} *)
+
+val all : ?pos:int -> ?len:int -> 'a re -> string -> ('a list, 'a error) Result.result
+(** [all ctyre s] calls to {!exec} repeatedly and returns the list of all the matches. *)
+
+val all_gen : ?pos:int -> ?len:int -> 'a re -> string -> 'a gen
+(** [all_gen ctyre s] is [all ctyre s] but returns a {!gen} instead. Matches
+    are enumerated lazily.
+
+    Exceptions raised by converters are not caught.
+*)
+
 (** {3:routing Routing} *)
 
 type +'a route = Route : 'x t * ('x -> 'a) -> 'a route

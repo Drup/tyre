@@ -404,21 +404,32 @@ type 'a error = [
   | `ConverterFailure of exn
 ]
 
+let extract_with_info ~info ~original subs = match info with
+  | One w -> extract ~original w subs
+  | Routes wl -> extract_route ~original wl subs
+
 let exec ?pos ?len ({ info ; cre } as tcre) original =
   match Re.exec_opt ?pos ?len cre original with
   | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
-    let f = match info with
-      | One wit -> extract ~original wit
-      | Routes wl -> extract_route ~original wl
-    in
     try
-      Result.Ok (f subs)
+      Result.Ok (extract_with_info ~info ~original subs)
     with exn ->
       Result.Error (`ConverterFailure exn)
 
 let execp ?pos ?len {cre ; _ } original =
   Re.execp ?pos ?len cre original
+
+let all_gen ?pos ?len { info ; cre } original =
+  let gen = Re.all_gen ?pos ?len cre original in
+  let get_res subs = extract_with_info ~info ~original subs in
+  Gen.map get_res gen
+
+let all ?pos ?len tcre original =
+  try
+    Result.Ok (Gen.to_list @@ all_gen ?pos ?len tcre original)
+  with exn ->
+    Result.Error (`ConverterFailure exn)
 
 (** Pretty printers *)
 
