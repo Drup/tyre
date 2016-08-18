@@ -185,6 +185,15 @@ val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.resu
     @param len length of the substring of [str] that can be matched (default to the end of the string)
 *)
 
+val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
+(** [execp ctyre s] returns [true] if [ctyre] matches [s].
+
+    @param pos optional beginning of the string (default 0)
+    @param len length of the substring of [str] that can be matched (default to the end of the string)
+
+    @since 0.1.1
+*)
+
 (** {3:routing Routing} *)
 
 type +'a route = Route : 'x t * ('x -> 'a) -> 'a route

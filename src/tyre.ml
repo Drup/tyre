@@ -381,6 +381,9 @@ let exec ?pos ?len ({ info ; cre } as tcre) original =
     with ConverterFailure (name, s) ->
       Result.Error (`ConverterFailure (name, s))
 
+let execp ?pos ?len {cre ; _ } original =
+  Re.execp ?pos ?len cre original
+
 (** Pretty printers *)
 
 let sexp ppf s fmt = Format.fprintf ppf ("@[<3>(%s@ "^^fmt^^")@]") s
