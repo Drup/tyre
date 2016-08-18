@@ -8,3 +8,5 @@ _tests
 *.docdir
 .gh-pages
 perf.*
+
+benchmark/data/http-requests.txt.*
