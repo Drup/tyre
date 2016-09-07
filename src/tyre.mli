@@ -158,6 +158,19 @@ val terminated_list : sep:_ t -> 'a t -> 'a list t
 val separated_list : sep:_ t -> 'a t -> 'a list t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <&> list (sep *> e))]. *)
 
+
+module Tuple : sig
+
+  val conv2 : ('a * 'b) t -> ('a * 'b) t
+  val conv3 : (('a * 'b) * 'c) t -> ('a * 'b * 'c) t
+  val conv4 : ((('a * 'b) * 'c) * 'd) t -> ('a * 'b * 'c * 'd) t
+
+  val re2 : sep:_ t -> 'a t -> ('a * 'a) t
+  val re3 : sep:_ t -> 'a t -> ('a * 'a * 'a) t
+  val re4 : sep:_ t -> 'a t -> ('a * 'a * 'a * 'a) t
+
+end
+
 (** {3 Other combinators}
 
     See {!Re} for details on the semantics of those combinators. *)
