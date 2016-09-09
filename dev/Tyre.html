@@ -229,6 +229,13 @@ A compiled typed regular expression.<br>
 </div>
 <div class="param_info"><code class="code">pos</code> : optional beginning of the string (default 0)</div>
 <div class="param_info"><code class="code">len</code> : length of the substring of <code class="code">str</code> that can be matched (default to the end of the string)</div>
+
+<pre><span id="VALexecp"><span class="keyword">val</span> execp</span> : <code class="type">?pos:int -> ?len:int -> 'a <a href="Tyre.html#TYPEre">re</a> -> string -> bool</code></pre><div class="info ">
+<code class="code">execp ctyre s</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">ctyre</code> matches <code class="code">s</code>.<br>
+<b>Since</b> 0.1.1<br>
+</div>
+<div class="param_info"><code class="code">pos</code> : optional beginning of the string (default 0)</div>
+<div class="param_info"><code class="code">len</code> : length of the substring of <code class="code">str</code> that can be matched (default to the end of the string)</div>
 <br>
 <h3 id="routing">Routing</h3><br>
 
