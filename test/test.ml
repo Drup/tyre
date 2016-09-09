@@ -25,6 +25,7 @@ let t' title desc re v s =
   let cre = Tyre.compile re in
   A.(check (result desc reject))
     (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
+  A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
 let t title desc re v s =
