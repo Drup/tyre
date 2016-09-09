@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: d5063b832819d51ef6e9d572f371c2c9) *)
+(* DO NOT EDIT (digest: 7559469c35f445151a507679b93bc344) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -179,11 +179,178 @@ module OASISString = struct
 
 end
 
+module OASISUtils = struct
+(* # 22 "src/oasis/OASISUtils.ml" *)
+
+
+  open OASISGettext
+
+
+  module MapExt =
+  struct
+    module type S =
+    sig
+      include Map.S
+      val add_list: 'a t -> (key * 'a) list -> 'a t
+      val of_list: (key * 'a) list -> 'a t
+      val to_list: 'a t -> (key * 'a) list
+    end
+
+    module Make (Ord: Map.OrderedType) =
+    struct
+      include Map.Make(Ord)
+
+      let rec add_list t =
+        function
+          | (k, v) :: tl -> add_list (add k v t) tl
+          | [] -> t
+
+      let of_list lst = add_list empty lst
+
+      let to_list t = fold (fun k v acc -> (k, v) :: acc) t []
+    end
+  end
+
+
+  module MapString = MapExt.Make(String)
+
+
+  module SetExt  =
+  struct
+    module type S =
+    sig
+      include Set.S
+      val add_list: t -> elt list -> t
+      val of_list: elt list -> t
+      val to_list: t -> elt list
+    end
+
+    module Make (Ord: Set.OrderedType) =
+    struct
+      include Set.Make(Ord)
+
+      let rec add_list t =
+        function
+          | e :: tl -> add_list (add e t) tl
+          | [] -> t
+
+      let of_list lst = add_list empty lst
+
+      let to_list = elements
+    end
+  end
+
+
+  module SetString = SetExt.Make(String)
+
+
+  let compare_csl s1 s2 =
+    String.compare (OASISString.lowercase_ascii s1) (OASISString.lowercase_ascii s2)
+
+
+  module HashStringCsl =
+    Hashtbl.Make
+      (struct
+         type t = string
+         let equal s1 s2 = (compare_csl s1 s2) = 0
+         let hash s = Hashtbl.hash (OASISString.lowercase_ascii s)
+       end)
+
+  module SetStringCsl =
+    SetExt.Make
+      (struct
+         type t = string
+         let compare = compare_csl
+       end)
+
+
+  let varname_of_string ?(hyphen='_') s =
+    if String.length s = 0 then
+      begin
+        invalid_arg "varname_of_string"
+      end
+    else
+      begin
+        let buf =
+          OASISString.replace_chars
+            (fun c ->
+               if ('a' <= c && c <= 'z')
+                 ||
+                  ('A' <= c && c <= 'Z')
+                 ||
+                  ('0' <= c && c <= '9') then
+                 c
+               else
+                 hyphen)
+            s;
+        in
+        let buf =
+          (* Start with a _ if digit *)
+          if '0' <= s.[0] && s.[0] <= '9' then
+            "_"^buf
+          else
+            buf
+        in
+          OASISString.lowercase_ascii buf
+      end
+
+
+  let varname_concat ?(hyphen='_') p s =
+    let what = String.make 1 hyphen in
+    let p =
+      try
+        OASISString.strip_ends_with ~what p
+      with Not_found ->
+        p
+    in
+    let s =
+      try
+        OASISString.strip_starts_with ~what s
+      with Not_found ->
+        s
+    in
+      p^what^s
+
+
+  let is_varname str =
+    str = varname_of_string str
+
+
+  let failwithf fmt = Printf.ksprintf failwith fmt
+
+
+  let rec file_location ?pos1 ?pos2 ?lexbuf () =
+      match pos1, pos2, lexbuf with
+      | Some p, None, _ | None, Some p, _ ->
+        file_location ~pos1:p ~pos2:p ?lexbuf ()
+      | Some p1, Some p2, _ ->
+        let open Lexing in
+        let fn, lineno = p1.pos_fname, p1.pos_lnum in
+        let c1 = p1.pos_cnum - p1.pos_bol in
+        let c2 = c1 + (p2.pos_cnum - p1.pos_cnum) in
+        Printf.sprintf (f_ "file %S, line %d, characters %d-%d")  fn lineno c1 c2
+      | _, _, Some lexbuf ->
+        file_location
+          ~pos1:(Lexing.lexeme_start_p lexbuf)
+          ~pos2:(Lexing.lexeme_end_p lexbuf)
+          ()
+      | None, None, None ->
+        s_ "<position undefined>"
+
+
+  let failwithpf ?pos1 ?pos2 ?lexbuf fmt =
+    let loc = file_location ?pos1 ?pos2 ?lexbuf () in
+    Printf.ksprintf (fun s -> failwith (Printf.sprintf "%s: %s" loc s)) fmt
+
+
+end
+
 module OASISExpr = struct
 (* # 22 "src/oasis/OASISExpr.ml" *)
 
 
   open OASISGettext
+  open OASISUtils
 
 
   type test = string
@@ -273,7 +440,7 @@ module OASISExpr = struct
 end
 
 
-# 276 "myocamlbuild.ml"
+# 443 "myocamlbuild.ml"
 module BaseEnvLight = struct
 (* # 22 "src/base/BaseEnvLight.ml" *)
 
@@ -284,72 +451,55 @@ module BaseEnvLight = struct
   type t = string MapString.t
 
 
-  let default_filename =
-    lazy (Filename.concat (Sys.getcwd ()) "setup.data")
+  let default_filename = Filename.concat (Sys.getcwd ()) "setup.data"
 
 
-  let load ?(allow_empty=false) ?(filename=Lazy.force default_filename) () =
-    if Sys.file_exists filename then
-      begin
-        let chn =
-          open_in_bin filename
-        in
-        let st =
-          Stream.of_channel chn
-        in
-        let line =
-          ref 1
-        in
-        let st_line =
-          Stream.from
-            (fun _ ->
-               try
-                 match Stream.next st with
-                   | '\n' -> incr line; Some '\n'
-                   | c -> Some c
-               with Stream.Failure -> None)
-        in
-        let lexer =
-          Genlex.make_lexer ["="] st_line
-        in
-        let rec read_file mp =
-          match Stream.npeek 3 lexer with
-            | [Genlex.Ident nm; Genlex.Kwd "="; Genlex.String value] ->
-              Stream.junk lexer;
-              Stream.junk lexer;
-              Stream.junk lexer;
-              read_file (MapString.add nm value mp)
-            | [] ->
-              mp
-            | _ ->
-              failwith
-                (Printf.sprintf
-                   "Malformed data file '%s' line %d"
-                   filename !line)
-        in
-        let mp =
-          read_file MapString.empty
-        in
-        close_in chn;
-        mp
-      end
-    else if allow_empty then
-      begin
+  let load ?(allow_empty=false) ?(filename=default_filename) ?stream () =
+    let line = ref 1 in
+    let lexer st =
+      let st_line =
+        Stream.from
+          (fun _ ->
+             try
+               match Stream.next st with
+               | '\n' -> incr line; Some '\n'
+               | c -> Some c
+             with Stream.Failure -> None)
+      in
+      Genlex.make_lexer ["="] st_line
+    in
+    let rec read_file lxr mp =
+      match Stream.npeek 3 lxr with
+      | [Genlex.Ident nm; Genlex.Kwd "="; Genlex.String value] ->
+        Stream.junk lxr; Stream.junk lxr; Stream.junk lxr;
+        read_file lxr (MapString.add nm value mp)
+      | [] -> mp
+      | _ ->
+        failwith
+          (Printf.sprintf "Malformed data file '%s' line %d" filename !line)
+    in
+    match stream with
+    | Some st -> read_file (lexer st) MapString.empty
+    | None ->
+      if Sys.file_exists filename then begin
+        let chn = open_in_bin filename in
+        let st = Stream.of_channel chn in
+        try
+          let mp = read_file (lexer st) MapString.empty in
+          close_in chn; mp
+        with e ->
+          close_in chn; raise e
+      end else if allow_empty then begin
         MapString.empty
-      end
-    else
-      begin
+      end else begin
         failwith
           (Printf.sprintf
              "Unable to load environment, the file '%s' doesn't exist."
              filename)
       end
 
-
   let rec var_expand str env =
-    let buff =
-      Buffer.create ((String.length str) * 2)
-    in
+    let buff = Buffer.create ((String.length str) * 2) in
     Buffer.add_substitute
       buff
       (fun var ->
@@ -365,18 +515,12 @@ module BaseEnvLight = struct
     Buffer.contents buff
 
 
-  let var_get name env =
-    var_expand (MapString.find name env) env
-
-
-  let var_choose lst env =
-    OASISExpr.choose
-      (fun nm -> var_get nm env)
-      lst
+  let var_get name env = var_expand (MapString.find name env) env
+  let var_choose lst env = OASISExpr.choose (fun nm -> var_get nm env) lst
 end
 
 
-# 379 "myocamlbuild.ml"
+# 523 "myocamlbuild.ml"
 module MyOCamlbuildFindlib = struct
 (* # 22 "src/plugins/ocamlbuild/MyOCamlbuildFindlib.ml" *)
 
@@ -391,24 +535,19 @@ module MyOCamlbuildFindlib = struct
   *)
   open Ocamlbuild_plugin
 
-  type conf =
-    { no_automatic_syntax: bool;
-    }
 
-  (* these functions are not really officially exported *)
-  let run_and_read =
-    Ocamlbuild_pack.My_unix.run_and_read
+  type conf = {no_automatic_syntax: bool}
 
 
-  let blank_sep_strings =
-    Ocamlbuild_pack.Lexers.blank_sep_strings
+  let run_and_read = Ocamlbuild_pack.My_unix.run_and_read
+
+
+  let blank_sep_strings = Ocamlbuild_pack.Lexers.blank_sep_strings
 
 
   let exec_from_conf exec =
     let exec =
-      let env_filename =
-        Pathname.basename (Lazy.force BaseEnvLight.default_filename) in
-      let env = BaseEnvLight.load ~filename:env_filename ~allow_empty:true () in
+      let env = BaseEnvLight.load ~allow_empty:true () in
       try
         BaseEnvLight.var_get exec env
       with Not_found ->
@@ -429,6 +568,7 @@ module MyOCamlbuildFindlib = struct
       end
     in
     fix_win32 exec
+
 
   let split s ch =
     let buf = Buffer.create 13 in
@@ -606,10 +746,6 @@ module MyOCamlbuildBase = struct
 (* # 110 "src/plugins/ocamlbuild/MyOCamlbuildBase.ml" *)
 
 
-  let env_filename =
-    lazy (Pathname.basename (Lazy.force BaseEnvLight.default_filename))
-
-
   let dispatch_combine lst =
     fun e ->
       List.iter
@@ -626,12 +762,7 @@ module MyOCamlbuildBase = struct
 
 
   let dispatch t e =
-    let env =
-      BaseEnvLight.load
-        ~filename:(Lazy.force env_filename)
-        ~allow_empty:true
-        ()
-    in
+    let env = BaseEnvLight.load ~allow_empty:true () in
       match e with
         | Before_options ->
             let no_trailing_dot s =
@@ -695,18 +826,19 @@ module MyOCamlbuildBase = struct
                    flag ["link"; "library"; "ocaml"; "native"; tag_libstubs lib]
                      (S[A"-cclib"; A("-l"^(nm_libstubs lib))]);
 
-                   flag ["link"; "program"; "ocaml"; "byte"; tag_libstubs lib]
-                     (S[A"-dllib"; A("dll"^(nm_libstubs lib))]);
+                   if bool_of_string (BaseEnvLight.var_get "native_dynlink" env) then
+                     flag ["link"; "program"; "ocaml"; "byte"; tag_libstubs lib]
+                         (S[A"-dllib"; A("dll"^(nm_libstubs lib))]);
 
                    (* When ocaml link something that use the C library, then one
                       need that file to be up to date.
                       This holds both for programs and for libraries.
                     *)
-  		 dep ["link"; "ocaml"; tag_libstubs lib]
-  		     [dir/"lib"^(nm_libstubs lib)^"."^(!Options.ext_lib)];
+                   dep ["link"; "ocaml"; tag_libstubs lib]
+                     [dir/"lib"^(nm_libstubs lib)^"."^(!Options.ext_lib)];
 
-  		 dep  ["compile"; "ocaml"; tag_libstubs lib]
-  		      [dir/"lib"^(nm_libstubs lib)^"."^(!Options.ext_lib)];
+                   dep  ["compile"; "ocaml"; tag_libstubs lib]
+                     [dir/"lib"^(nm_libstubs lib)^"."^(!Options.ext_lib)];
 
                    (* TODO: be more specific about what depends on headers *)
                    (* Depends on .h files *)
@@ -746,7 +878,7 @@ module MyOCamlbuildBase = struct
 end
 
 
-# 749 "myocamlbuild.ml"
+# 881 "myocamlbuild.ml"
 open Ocamlbuild_plugin;;
 let package_default =
   {
@@ -761,6 +893,6 @@ let conf = {MyOCamlbuildFindlib.no_automatic_syntax = false}
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default conf package_default;;
 
-# 765 "myocamlbuild.ml"
+# 897 "myocamlbuild.ml"
 (* OASIS_STOP *)
 Ocamlbuild_plugin.dispatch dispatch_default;;

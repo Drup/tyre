@@ -1,6 +1,6 @@
 OASISFormat: 0.4
 Name:        Tyre
-Version:     0.1
+Version:     0.1.1
 Synopsis:    Typed Regular Expressions
 Authors:     Gabriel Radanne <drupyog@zoho.com>
 License:     ISC
