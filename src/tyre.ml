@@ -92,7 +92,7 @@ let conv ~name to_ from_ x : _ t = Conv (name, x, {to_; from_})
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
-let (<?>) = alt
+let (<|>) = alt
 let (<*>) = seq
 
 let prefix (x,s) a = Prefix (x, s, a)
