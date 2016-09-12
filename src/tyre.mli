@@ -106,6 +106,9 @@ val str : string -> unit t
 val char : char -> unit t
 (** [char c] matches [c] and evaluates to [c]. *)
 
+val blanks : unit t
+(** [blanks] matches [Re.(rep blank)] and doesn't return anything. *)
+
 val int : int t
 (** [int] matches [-?[0-9]+] and returns the matched integer.
 
