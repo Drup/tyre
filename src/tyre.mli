@@ -31,8 +31,8 @@ type 'a t
 
 (** {2 Combinators} *)
 
-val regex : Re.t -> string t
-(** [regex re] is a tyregex that matches [re] and return the corresponding string.
+val regex : string -> Re.t -> string t
+(** [regex s re] is a tyregex that matches [re] and return the corresponding string.
     Groups inside [re] are erased.
 *)
 
@@ -72,23 +72,13 @@ val rep1 : 'a t -> ('a * 'a gen) t
 val seq : 'a t -> 'b t -> ('a * 'b) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
 
-val prefix : ('b t * 'b) -> 'a t -> 'a t
-(** [prefix (tyre_i, s) tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result.
-
-    [s] is the witness used for {{!eval}evaluation}. It is assumed (but not checked) that [tyre_i] matches [s].
+val prefix : _ t -> 'a t -> 'a t
+(** [prefix tyre_i tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result.
 *)
 
-val prefixstr : string -> 'a t -> 'a t
-(** [prefixstr s tyre] matches [s] then matches [tyre] and return its value.
-
-    It is equal to [prefix (regex (Re.str s), s) tyre].
-*)
-
-val suffix : 'a t -> ('b t * 'b) -> 'a t
+val suffix : 'a t -> _ t -> 'a t
 (** Same as [prefix], but reversed. *)
 
-val suffixstr : 'a t -> string -> 'a t
-(** Same as [prefixstr], but reversed. *)
 
 
 (** {3 Infix operators}
@@ -102,17 +92,11 @@ val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 val (<*>) : 'a t -> 'b t -> ('a * 'b) t
 (** [t <*> t'] is [seq t t']. *)
 
-val ( *>) :  string -> 'a t -> 'a t
-(** [s *> t] is [prefixstr s t]. *)
+val ( *>) : _ t -> 'a t -> 'a t
+(** [ ti *> t ] is [prefix ti t]. *)
 
-val (<* ) : 'a t -> string -> 'a t
-(** [t <* s] is [suffixstr s t]. *)
-
-val ( **>) : ('b t * 'b) -> 'a t -> 'a t
-(** [ (ti,s) **> t ] is [prefix (ti,s) t]. *)
-
-val (<** ) : 'a t -> ('b t * 'b) -> 'a t
-(** [ t <** (ti,s) ] is [suffix t (ti,s)]. *)
+val (<* ) : 'a t -> _ t -> 'a t
+(** [ t <* ti ] is [suffix t ti]. *)
 
 (** {3 Useful combinators} *)
 
@@ -140,10 +124,10 @@ val bool : bool t
 val list : 'a t -> 'a list t
 (** [list e] is similar to [rep e], but returns a list. *)
 
-val terminated_list : sep:string -> 'a t -> 'a list t
+val terminated_list : sep:_ t -> 'a t -> 'a list t
 (** [terminated_list ~sep tyre] is [ list (tyre <* sep) ]. *)
 
-val separated_list : sep:string -> 'a t -> 'a list t
+val separated_list : sep:_ t -> 'a t -> 'a list t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <*> list (sep *> e))]. *)
 
 (** {3 Other combinators}
@@ -249,13 +233,13 @@ module Internal : sig
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
+    | Regexp : string * Re.t * Re.re Lazy.t -> string raw
     | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'b * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
+    | Prefix : 'b raw * 'a raw -> 'a raw
+    | Suffix : 'a raw * 'b raw  -> 'a raw
     | Rep    : 'a raw -> 'a gen raw
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
