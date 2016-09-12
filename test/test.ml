@@ -51,7 +51,7 @@ let basics = [
   t "bool false" A.bool bool false "false" ;
 
   topt "int option" A.int (opt int) 3 "3" "" ;
-  t "int seq" A.(pair int bool) (int <*> bool) (3,true) "3true" ;
+  t "int seq" A.(pair int bool) (int <&> bool) (3,true) "3true" ;
 ]
 
 let prefix_suffix = [
@@ -61,10 +61,10 @@ let prefix_suffix = [
   t "prefixstr" A.int (str "foo" *> int) 3 "foo3" ;
   t "suffixstr" A.int (int <* str "foo") 3 "3foo" ;
 
-  t "prefix seq" A.(pair int int) (int <*> str "foo" *> int) (3,4) "3foo4" ;
-  t "prefix seq" A.(pair int bool) (int <*> bool <* str "foo") (3,true) "3truefoo" ;
-  t "suffix seq" A.(pair int int) (int <* str "foo" <*> int) (3,4) "3foo4" ;
-  t "suffix seq" A.(pair bool int) (str "foo" *> bool <*> int) (true,4) "footrue4" ;
+  t "prefix seq" A.(pair int int) (int <&> str "foo" *> int) (3,4) "3foo4" ;
+  t "prefix seq" A.(pair int bool) (int <&> bool <* str "foo") (3,true) "3truefoo" ;
+  t "suffix seq" A.(pair int int) (int <* str "foo" <&> int) (3,4) "3foo4" ;
+  t "suffix seq" A.(pair bool int) (str "foo" *> bool <&> int) (true,4) "footrue4" ;
 ]
 
 let composed = [

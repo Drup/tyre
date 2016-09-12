@@ -86,8 +86,8 @@ val suffix : 'a t -> _ t -> 'a t
 val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 (** [t <|> t'] is [alt t t']. *)
 
-val (<*>) : 'a t -> 'b t -> ('a * 'b) t
-(** [t <*> t'] is [seq t t']. *)
+val (<&>) : 'a t -> 'b t -> ('a * 'b) t
+(** [t <&> t'] is [seq t t']. *)
 
 val ( *>) : _ t -> 'a t -> 'a t
 (** [ ti *> t ] is [prefix ti t]. *)
@@ -100,8 +100,8 @@ module Infix : sig
   val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
   (** [t <|> t'] is [alt t t']. *)
 
-  val (<*>) : 'a t -> 'b t -> ('a * 'b) t
-  (** [t <*> t'] is [seq t t']. *)
+  val (<&>) : 'a t -> 'b t -> ('a * 'b) t
+  (** [t <&> t'] is [seq t t']. *)
 
   val ( *>) : _ t -> 'a t -> 'a t
   (** [ ti *> t ] is [prefix ti t]. *)
@@ -150,7 +150,7 @@ val terminated_list : sep:_ t -> 'a t -> 'a list t
 (** [terminated_list ~sep tyre] is [ list (tyre <* sep) ]. *)
 
 val separated_list : sep:_ t -> 'a t -> 'a list t
-(** [separated_list ~sep tyre] is equivalent to [opt (e <*> list (sep *> e))]. *)
+(** [separated_list ~sep tyre] is equivalent to [opt (e <&> list (sep *> e))]. *)
 
 (** {3 Other combinators}
 

@@ -1,10 +1,10 @@
 (** This is a simple example for tyre. *)
 
 (* We create a typed regular expression matching "[0-9]+x[0-9]+"
-    <*> is the sequence operator. *> is the prefix operator.
+    <&> is the sequence operator. *> is the prefix operator.
    This typed regular expression will return a pair of positive integers.
 *)
-let dim : (int * int) Tyre.t = Tyre.( pos_int <*> str"x" *> pos_int )
+let dim : (int * int) Tyre.t = Tyre.( pos_int <&> str"x" *> pos_int )
 
 (* We can keep composing! *)
 let prefixed_dim : (int * int) Tyre.t = Tyre.(str"dim:" *> dim)

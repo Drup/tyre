@@ -99,7 +99,7 @@ let opt a : _ t = Opt a
 module Infix = struct
 
   let (<|>) = alt
-  let (<*>) = seq
+  let (<&>) = seq
 
   let ( *>) = prefix
   let (<* ) = suffix
@@ -108,7 +108,7 @@ end
 include Infix
 
 let rep x : _ t = Rep x
-let rep1 x = x <*> rep x
+let rep1 x = x <&> rep x
 
 let modifier f re = Mod (f, re)
 let word re = modifier Re.word re
@@ -174,7 +174,7 @@ let list e =
 
 let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
-  let e = opt (e <*> list (sep *> e)) in
+  let e = opt (e <&> list (sep *> e)) in
   let to_ = function None -> Some [] | Some (h, t) -> Some (h :: t)
   and from_ = function [] -> None | h :: t -> Some (h, t)
   in
