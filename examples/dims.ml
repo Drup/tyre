@@ -4,10 +4,10 @@
     <*> is the sequence operator. *> is the prefix operator.
    This typed regular expression will return a pair of positive integers.
 *)
-let dim : (int * int) Tyre.t = Tyre.( pos_int <*> "x" *> pos_int )
+let dim : (int * int) Tyre.t = Tyre.( pos_int <*> str"x" *> pos_int )
 
 (* We can keep composing! *)
-let prefixed_dim : (int * int) Tyre.t = Tyre.("dim:" *> dim)
+let prefixed_dim : (int * int) Tyre.t = Tyre.(str"dim:" *> dim)
 
 (* Before using it, we need to compile it *)
 let dim_re = Tyre.compile prefixed_dim
@@ -42,7 +42,7 @@ let nice_dim : dim Tyre.t =
 *)
 let list_of_dims : dim list Tyre.t =
   let sep = Re.(seq [ rep blank ; char ';' ; rep blank ]) in
-  Tyre.( "dims:" *> list (nice_dim <** (regex sep, ";")))
+  Tyre.( str"dims:" *> list (nice_dim <* regex ";" sep ))
 
 let () =
   assert (Tyre.eval list_of_dims [{x=2;y=3}; {x=12; y=54}] = "dims:2x3;12x54;")

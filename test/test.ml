@@ -55,40 +55,40 @@ let basics = [
 ]
 
 let prefix_suffix = [
-  t "prefix" A.int ((bool,true) **> int) 3 "true3" ;
-  t "prefix" A.int ((int,4) **> (bool,false) **> int) (-2) "4false-2" ;
+  t "prefix" A.int (bool *> int) 3 "true3" ;
+  t "prefix" A.int (int *> bool *> int) (-2) "0true-2" ;
 
-  t "prefixstr" A.int ("foo" *> int) 3 "foo3" ;
-  t "suffixstr" A.int (int <* "foo") 3 "3foo" ;
+  t "prefixstr" A.int (str "foo" *> int) 3 "foo3" ;
+  t "suffixstr" A.int (int <* str "foo") 3 "3foo" ;
 
-  t "prefix seq" A.(pair int int) (int <*> "foo" *> int) (3,4) "3foo4" ;
-  t "prefix seq" A.(pair int bool) (int <*> bool <* "foo") (3,true) "3truefoo" ;
-  t "suffix seq" A.(pair int int) (int <* "foo" <*> int) (3,4) "3foo4" ;
-  t "suffix seq" A.(pair bool int) ("foo" *> bool <*> int) (true,4) "footrue4" ;
+  t "prefix seq" A.(pair int int) (int <*> str "foo" *> int) (3,4) "3foo4" ;
+  t "prefix seq" A.(pair int bool) (int <*> bool <* str "foo") (3,true) "3truefoo" ;
+  t "suffix seq" A.(pair int int) (int <* str "foo" <*> int) (3,4) "3foo4" ;
+  t "suffix seq" A.(pair bool int) (str "foo" *> bool <*> int) (true,4) "footrue4" ;
 ]
 
 let composed = [
-  topt "option prefix" A.int (opt int <* "foo") 3 "3foo" "foo" ;
-  t "terminated list" A.(list int) (terminated_list ~sep:";" int)
+  topt "option prefix" A.int (opt int <* str "foo") 3 "3foo" "foo" ;
+  t "terminated list" A.(list int) (terminated_list ~sep:(char ';') int)
     [1;254;3;54;] "1;254;3;54;" ;
-  t "separated list" A.(list int) (separated_list ~sep:";" int)
+  t "separated list" A.(list int) (separated_list ~sep:(char ';') int)
     [1;254;3;54] "1;254;3;54" ;
-  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <|> regex Re.alpha))
+  t "alt list" A.(list @@ choice string string) (list (regex "0" Re.digit <|> regex "x" Re.alpha))
     [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c" ;
   t "list of list"
     A.(list @@ list @@ choice int string)
-    (list @@ "@" *> list (pos_int <|> regex Re.alpha))
+    (list @@ str"@" *> list (pos_int <|> regex "x" Re.alpha))
     [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
 ]
 
 let routes =
-  let fixed n = regex Re.(repn any n (Some n)) in
+  let fixed n = regex (String.make n 'X') Re.(repn any n (Some n)) in
   let f n x = n, x in
   route [
-    ("foo" *> fixed 3 <* "xx") --> f 1 ;
-    ("foo" *> fixed 5) --> f 2 ;
-    ("bar" *> fixed 5) --> f 3 ;
-    (fixed 2 <* "blob") --> f 4 ;
+    (str"foo" *> fixed 3 <* str"xx") --> f 1 ;
+    (str"foo" *> fixed 5) --> f 2 ;
+    (str"bar" *> fixed 5) --> f 3 ;
+    (fixed 2 <* str"blob") --> f 4 ;
   ]
 
 let troute title s n res =
