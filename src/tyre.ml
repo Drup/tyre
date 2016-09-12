@@ -138,6 +138,19 @@ end
 let try_ f x = match f x with v -> Some v | exception _ -> None
 let some f x = Some (f x)
 
+let str s =
+  conv ~name:"str"
+    (fun _ -> Some ())
+    (fun _ -> s)
+  @@ regex s (Re.str s)
+
+let char c =
+  let s = String.make 1 c in
+  conv ~name:"char"
+    (fun _ -> Some ())
+    (fun _ -> s)
+    @@ regex s (Re.char c)
+
 let pos_int =
   conv "pos_int" (try_ int_of_string) string_of_int (regex "0" Regex.pos_int)
 

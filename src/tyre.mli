@@ -100,6 +100,12 @@ val (<* ) : 'a t -> _ t -> 'a t
 
 (** {3 Useful combinators} *)
 
+val str : string -> unit t
+(** [str s] matches [s] and evaluates to [s]. *)
+
+val char : char -> unit t
+(** [char c] matches [c] and evaluates to [c]. *)
+
 val int : int t
 (** [int] matches [-?[0-9]+] and returns the matched integer.
 
