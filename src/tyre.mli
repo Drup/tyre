@@ -96,8 +96,8 @@ val suffixstr : 'a t -> string -> 'a t
     The tyregexs are on sides with an arrow.
 *)
 
-val (<?>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
-(** [t <?> t'] is [alt t t']. *)
+val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+(** [t <|> t'] is [alt t t']. *)
 
 val (<*>) : 'a t -> 'b t -> ('a * 'b) t
 (** [t <*> t'] is [seq t t']. *)

@@ -1,6 +1,7 @@
 # Change Log
 
 ## NEXT
+* Rename <?> to <|>
 
 ## 0.1.1 (09 September 2016)
 * Fix a bug with nested repetitions. Also avoid some copying of the original string.
