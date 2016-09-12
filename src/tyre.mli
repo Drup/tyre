@@ -81,10 +81,7 @@ val suffix : 'a t -> _ t -> 'a t
 
 
 
-(** {3 Infix operators}
-
-    The tyregexs are on sides with an arrow.
-*)
+(** {3 Infix operators} *)
 
 val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 (** [t <|> t'] is [alt t t']. *)
@@ -97,6 +94,22 @@ val ( *>) : _ t -> 'a t -> 'a t
 
 val (<* ) : 'a t -> _ t -> 'a t
 (** [ t <* ti ] is [suffix t ti]. *)
+
+module Infix : sig
+
+  val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+  (** [t <|> t'] is [alt t t']. *)
+
+  val (<*>) : 'a t -> 'b t -> ('a * 'b) t
+  (** [t <*> t'] is [seq t t']. *)
+
+  val ( *>) : _ t -> 'a t -> 'a t
+  (** [ ti *> t ] is [prefix ti t]. *)
+
+  val (<* ) : 'a t -> _ t -> 'a t
+  (** [ t <* ti ] is [suffix t ti]. *)
+
+end
 
 (** {3 Useful combinators} *)
 

@@ -92,15 +92,20 @@ let conv ~name to_ from_ x : _ t = Conv (name, x, {to_; from_})
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
-let (<|>) = alt
-let (<*>) = seq
-
 let prefix x a = Prefix (x, a)
 let suffix a x = Suffix (a, x)
 let opt a : _ t = Opt a
 
-let ( *>) = prefix
-let (<* ) = suffix
+module Infix = struct
+
+  let (<|>) = alt
+  let (<*>) = seq
+
+  let ( *>) = prefix
+  let (<* ) = suffix
+
+end
+include Infix
 
 let rep x : _ t = Rep x
 let rep1 x = x <*> rep x
