@@ -33,16 +33,14 @@ let nice_dim : dim Tyre.t =
     (fun {x;y} -> (x,y)) (* We provide the backward transformation to unparse *)
     dim
 
-(* We can keep composing regular expressions and fall back to Re when needed.
+(* We can keep composing regular expressions.
    Here, we parse a list of dimensions ended by semi-colons.
 
-   The <** operator allow to suffix with a regex.
-   Since tyre is bidirectional, we need to provide something that should be
-   used for unparsing. Here it's simply ",".
+   The <* and *> operators allow to suffix and prefix with a regex.
 *)
 let list_of_dims : dim list Tyre.t =
-  let sep = Re.(seq [ rep blank ; char ';' ; rep blank ]) in
-  Tyre.( str"dims:" *> list (nice_dim <* regex sep ))
+  let sep = Tyre.( blanks *> char ';' <* blanks )in
+  Tyre.( str"dims:" *> terminated_list ~sep nice_dim )
 
 let () =
   assert (Tyre.eval list_of_dims [{x=2;y=3}; {x=12; y=54}] = "dims:2x3;12x54;")
