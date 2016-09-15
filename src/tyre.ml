@@ -58,7 +58,7 @@ module Types = struct
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : string * Re.t * Re.re Lazy.t -> string raw
+    | Regexp : Re.t * Re.re Lazy.t -> string raw
     | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
@@ -84,9 +84,9 @@ open Types
 
 type 'a t = 'a raw
 
-let regex s x : _ t =
+let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
-  Regexp (s, x, re)
+  Regexp (x, re)
 let conv ~name to_ from_ x : _ t = Conv (name, x, {to_; from_})
 
 let seq a b : _ t = Seq (a, b)
@@ -147,7 +147,7 @@ let unit ~name s re =
   conv ~name
     (fun _ -> Some ())
     (fun _ -> s)
-    (regex s re)
+    (regex re)
 
 let str s = unit ~name:"str" s (Re.str s)
 
@@ -158,16 +158,16 @@ let char c =
 let blanks = unit ~name:"blanks" "" (Re.rep Re.blank)
 
 let pos_int =
-  conv "pos_int" (try_ int_of_string) string_of_int (regex "0" Regex.pos_int)
+  conv "pos_int" (try_ int_of_string) string_of_int (regex Regex.pos_int)
 
 let int =
-  conv "int" (try_ int_of_string) string_of_int (regex "0" Regex.int)
+  conv "int" (try_ int_of_string) string_of_int (regex Regex.int)
 
 let float =
-  conv "float" (try_ float_of_string) string_of_float (regex "0." Regex.float)
+  conv "float" (try_ float_of_string) string_of_float (regex Regex.float)
 
 let bool =
-  conv "bool" (try_ bool_of_string) string_of_bool (regex "true" Regex.bool)
+  conv "bool" (try_ bool_of_string) string_of_bool (regex Regex.bool)
 
 let list e =
   conv "list" (some Gen.to_list) Gen.of_list (rep e)
@@ -193,7 +193,7 @@ let separated_list ~sep e =
 let rec witnesspp
   : type a . Format.formatter -> a t -> unit
   = fun ppf tre -> match tre with
-    | Regexp (s, _, _) -> Format.pp_print_string ppf s
+    | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
     | Conv (_, tre, _) -> witnesspp ppf tre
     | Opt _ -> ()
     | Alt (tre1, _) -> witnesspp ppf tre1
@@ -222,7 +222,7 @@ let rec pprep f ppf gen = match gen () with
 let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
   = fun tre ppf -> match tre with
-    | Regexp (_, _, lazy cre) -> begin function v ->
+    | Regexp (_, lazy cre) -> begin function v ->
         if not @@ Re.execp cre v then
           invalid_arg @@
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
@@ -264,7 +264,7 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
 let rec build
   : type a. a t -> int * a wit * Re.t
   = let open! Re in function
-    | Regexp (_, re, _) ->
+    | Regexp (re, _) ->
       1, Regexp re, group @@ no_group re
     | Conv (name , e, conv) ->
       let i, w, re = build e in
@@ -445,7 +445,7 @@ let rec pp_list pp ppf = function
 let rec pp
   : type a. _ -> a t -> unit
   = fun ppf -> function
-  | Regexp (_, re,_) -> sexp ppf "Re" "%a" Re.pp re
+  | Regexp (re,_) -> sexp ppf "Re" "%a" Re.pp re
   | Conv (name,tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp tre
   | Opt tre -> sexp ppf "Opt" "%a" pp tre
   | Alt (tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp tre1 pp tre2

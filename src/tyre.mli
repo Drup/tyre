@@ -31,8 +31,8 @@ type 'a t
 
 (** {2 Combinators} *)
 
-val regex : string -> Re.t -> string t
-(** [regex s re] is a tyregex that matches [re] and return the corresponding string.
+val regex : Re.t -> string t
+(** [regex re] is a tyregex that matches [re] and return the corresponding string.
     Groups inside [re] are erased.
 *)
 
@@ -255,7 +255,7 @@ module Internal : sig
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : string * Re.t * Re.re Lazy.t -> string raw
+    | Regexp : Re.t * Re.re Lazy.t -> string raw
     | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw

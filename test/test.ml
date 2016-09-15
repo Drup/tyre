@@ -73,16 +73,16 @@ let composed = [
     [1;254;3;54;] "1;254;3;54;" ;
   t "separated list" A.(list int) (separated_list ~sep:(char ';') int)
     [1;254;3;54] "1;254;3;54" ;
-  t "alt list" A.(list @@ choice string string) (list (regex "0" Re.digit <|> regex "x" Re.alpha))
+  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <|> regex Re.alpha))
     [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c" ;
   t "list of list"
     A.(list @@ list @@ choice int string)
-    (list @@ str"@" *> list (pos_int <|> regex "x" Re.alpha))
+    (list @@ str"@" *> list (pos_int <|> regex Re.alpha))
     [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
 ]
 
 let routes =
-  let fixed n = regex (String.make n 'X') Re.(repn any n (Some n)) in
+  let fixed n = regex Re.(repn any n (Some n)) in
   let f n x = n, x in
   route [
     (str"foo" *> fixed 3 <* str"xx") --> f 1 ;

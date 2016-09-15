@@ -42,7 +42,7 @@ let nice_dim : dim Tyre.t =
 *)
 let list_of_dims : dim list Tyre.t =
   let sep = Re.(seq [ rep blank ; char ';' ; rep blank ]) in
-  Tyre.( str"dims:" *> list (nice_dim <* regex ";" sep ))
+  Tyre.( str"dims:" *> list (nice_dim <* regex sep ))
 
 let () =
   assert (Tyre.eval list_of_dims [{x=2;y=3}; {x=12; y=54}] = "dims:2x3;12x54;")
