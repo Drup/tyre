@@ -87,7 +87,14 @@ type 'a t = 'a raw
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
-let conv ~name to_ from_ x : _ t = Conv (name, x, {to_; from_})
+
+let conv_fail ~name to_ from_ x : _ t =
+  let to_ x = try to_ x with _ -> None in
+  Conv (name, x, {to_; from_})
+
+let conv to_ from_ x : _ t =
+  let to_ x = Some (to_ x) in
+  Conv ("", x, {to_; from_})
 
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
@@ -140,45 +147,44 @@ module Regex = struct
 
 end
 
-let try_ f x = match f x with v -> Some v | exception _ -> None
 let some f x = Some (f x)
 
-let unit ~name s re =
-  conv ~name
-    (fun _ -> Some ())
+let unit s re =
+  conv
+    (fun _ -> ())
     (fun _ -> s)
     (regex re)
 
-let str s = unit ~name:"str" s (Re.str s)
+let str s = unit s (Re.str s)
 
 let char c =
   let s = String.make 1 c in
-  unit ~name:"char" s (Re.char c)
+  unit s (Re.char c)
 
-let blanks = unit ~name:"blanks" "" (Re.rep Re.blank)
+let blanks = unit "" (Re.rep Re.blank)
 
 let pos_int =
-  conv "pos_int" (try_ int_of_string) string_of_int (regex Regex.pos_int)
+  conv_fail "pos_int" (some int_of_string) string_of_int (regex Regex.pos_int)
 
 let int =
-  conv "int" (try_ int_of_string) string_of_int (regex Regex.int)
+  conv_fail "int" (some int_of_string) string_of_int (regex Regex.int)
 
 let float =
-  conv "float" (try_ float_of_string) string_of_float (regex Regex.float)
+  conv_fail "float" (some float_of_string) string_of_float (regex Regex.float)
 
 let bool =
-  conv "bool" (try_ bool_of_string) string_of_bool (regex Regex.bool)
+  conv_fail "bool" (some bool_of_string) string_of_bool (regex Regex.bool)
 
 let list e =
-  conv "list" (some Gen.to_list) Gen.of_list (rep e)
+  conv Gen.to_list Gen.of_list (rep e)
 
 let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
   let e = opt (e <&> list (sep *> e)) in
-  let to_ = function None -> Some [] | Some (h, t) -> Some (h :: t)
+  let to_ = function None -> [] | Some (h, t) -> (h :: t)
   and from_ = function [] -> None | h :: t -> Some (h, t)
   in
-  conv "separated list" to_ from_ e
+  conv to_ from_ e
 
 
 (** {2 Witness} *)

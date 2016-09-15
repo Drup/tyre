@@ -28,8 +28,7 @@ let () =
 type dim = { x : int ; y : int }
 let nice_dim : dim Tyre.t =
   Tyre.conv
-    ~name:"dim" (* Name of the converter, for error reporting. *)
-    (fun (x,y) -> Some { x ; y }) (* forward, can potentially fail with None *)
+    (fun (x,y) -> { x ; y })
     (fun {x;y} -> (x,y)) (* We provide the backward transformation to unparse *)
     dim
 

@@ -36,14 +36,22 @@ val regex : Re.t -> string t
     Groups inside [re] are erased.
 *)
 
-val conv : name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a t -> 'b t
-(** [conv ~name to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type. For example, this is the implementation of {!pos_int}:
+val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
+(** [conv ~name to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
+*)
+
+val conv_fail : name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a t -> 'b t
+(** [conv_fail ~name to_ from_ tyre] is similar to [conv to_ from_ tyre] excepts [to_] is allowed to fail by returning [None] or raising an exception. If it does, {!exec} will return [`ConverterFailure (name, s)] with [s] the substring on which the converter was called.
+
+For example, this is the implementation of {!pos_int}:
 
 {[
-let pos_int = Tyre.conv (try_ int_of_string) string_of_int (Tyre.regex (Re.rep1 Re.digit))
+let pos_int =
+  Tyre.conv_fail ~name:"pos_int"
+    (fun x -> Some (int_of_string x)) string_of_int
+    (Tyre.regex (Re.rep1 Re.digit))
 ]}
 
-The [to_] part of the converter is allowed to fail, by returning [None]. If it does, {!exec} will return [`ConverterFailure (name, s)] with [s] the substring on which the converter was called.
 *)
 
 val opt : 'a t -> 'a option t
