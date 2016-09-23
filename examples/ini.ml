@@ -62,4 +62,4 @@ let sample_ini_str = Tyre.eval ini sample_ini
 let sample_ini' = Tyre.exec (Tyre.compile ini) sample_ini_str
 
 let () =
-  assert (Ok sample_ini = sample_ini')
+  assert (Result.Ok sample_ini = sample_ini')
