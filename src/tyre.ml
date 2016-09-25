@@ -117,7 +117,11 @@ include Infix
 let rep x : _ t = Rep x
 let rep1 x = x <&> rep x
 
+(* [modifier] is unsafe in general (for example [modifier Re.group]).
+   It shouldn't be exposed to the user.
+*)
 let modifier f re = Mod (f, re)
+
 let word re = modifier Re.word re
 let whole_string re = modifier Re.whole_string re
 let longest re = modifier Re.longest re
