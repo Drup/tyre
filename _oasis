@@ -50,3 +50,14 @@ Test example_dim
   Command: $example_dim
   TestTools: test
   WorkingDirectory: _build
+
+Executable example_ini
+  Build$: flag(tests)
+  Path: examples
+  BuildDepends: tyre
+  MainIs: ini.ml
+
+Test example_ini
+  Command: $example_ini
+  TestTools: test
+  WorkingDirectory: _build

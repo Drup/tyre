@@ -63,8 +63,8 @@ module Types = struct
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'b * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b * 'b raw  -> 'a raw
+    | Prefix : 'b raw * 'a raw -> 'a raw
+    | Suffix : 'a raw * 'b raw  -> 'a raw
     | Rep    : 'a raw -> 'a gen raw
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
@@ -87,29 +87,41 @@ type 'a t = 'a raw
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
-let conv ~name to_ from_ x : _ t = Conv (name, x, {to_; from_})
+
+let conv_fail ~name to_ from_ x : _ t =
+  let to_ x = try to_ x with _ -> None in
+  Conv (name, x, {to_; from_})
+
+let conv to_ from_ x : _ t =
+  let to_ x = Some (to_ x) in
+  Conv ("", x, {to_; from_})
 
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
-let (<|>) = alt
-let (<*>) = seq
-
-let prefix (x,s) a = Prefix (x, s, a)
-let suffix a (x,s) = Suffix (a, s, x)
-let prefixstr s a = prefix (regex (Re.str s), s) a
-let suffixstr a s = suffix a (regex (Re.str s), s)
+let prefix x a = Prefix (x, a)
+let suffix a x = Suffix (a, x)
 let opt a : _ t = Opt a
 
-let ( *>) = prefixstr
-let (<* ) = suffixstr
-let ( **>) = prefix
-let (<** ) = suffix
+module Infix = struct
+
+  let (<|>) = alt
+  let (<&>) = seq
+
+  let ( *>) = prefix
+  let (<* ) = suffix
+
+end
+include Infix
 
 let rep x : _ t = Rep x
-let rep1 x = x <*> rep x
+let rep1 x = x <&> rep x
 
+(* [modifier] is unsafe in general (for example [modifier Re.group]).
+   It shouldn't be exposed to the user.
+*)
 let modifier f re = Mod (f, re)
+
 let word re = modifier Re.word re
 let whole_string re = modifier Re.whole_string re
 let longest re = modifier Re.longest re
@@ -139,31 +151,74 @@ module Regex = struct
 
 end
 
-let try_ f x = match f x with v -> Some v | exception _ -> None
 let some f x = Some (f x)
 
+let unit s re =
+  conv
+    (fun _ -> ())
+    (fun _ -> s)
+    (regex re)
+
+let str s = unit s (Re.str s)
+
+let char c =
+  let s = String.make 1 c in
+  unit s (Re.char c)
+
+let blanks = unit "" (Re.rep Re.blank)
+
 let pos_int =
-  conv "pos_int" (try_ int_of_string) string_of_int (regex Regex.pos_int)
+  conv_fail "pos_int" (some int_of_string) string_of_int (regex Regex.pos_int)
 
 let int =
-  conv "int" (try_ int_of_string) string_of_int (regex Regex.int)
+  conv_fail "int" (some int_of_string) string_of_int (regex Regex.int)
 
 let float =
-  conv "float" (try_ float_of_string) string_of_float (regex Regex.float)
+  conv_fail "float" (some float_of_string) string_of_float (regex Regex.float)
 
 let bool =
-  conv "bool" (try_ bool_of_string) string_of_bool (regex Regex.bool)
+  conv_fail "bool" (some bool_of_string) string_of_bool (regex Regex.bool)
 
 let list e =
-  conv "list" (some Gen.to_list) Gen.of_list (rep e)
+  conv Gen.to_list Gen.of_list (rep e)
 
 let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
-  let e = opt (e <*> list (sep *> e)) in
-  let to_ = function None -> Some [] | Some (h, t) -> Some (h :: t)
+  let e = opt (e <&> list (sep *> e)) in
+  let to_ = function None -> [] | Some (h, t) -> (h :: t)
   and from_ = function [] -> None | h :: t -> Some (h, t)
   in
-  conv "separated list" to_ from_ e
+  conv to_ from_ e
+
+
+(** {2 Witness} *)
+
+(** A witness is a string such that [exec (compile re) (witness re) = true].
+    The computation of the witness is deterministic and should result in
+    a small example.
+
+    It is used in [eval] for the part of the regex that are ignored.
+*)
+
+let rec witnesspp
+  : type a . Format.formatter -> a t -> unit
+  = fun ppf tre -> match tre with
+    | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
+    | Conv (_, tre, _) -> witnesspp ppf tre
+    | Opt _ -> ()
+    | Alt (tre1, _) -> witnesspp ppf tre1
+    | Seq (tre1, tre2) ->
+      witnesspp ppf tre1 ;
+      witnesspp ppf tre2
+    | Prefix (tre1,tre2) ->
+      witnesspp ppf tre1 ;
+      witnesspp ppf tre2
+    | Suffix (tre1,tre2) ->
+      witnesspp ppf tre1 ;
+      witnesspp ppf tre2
+    | Rep _ -> ()
+    | Mod (_,tre) ->
+      witnesspp ppf tre
 
 (** {2 Evaluation functions} *)
 
@@ -191,10 +246,10 @@ let rec evalpp
     | Seq (tre1,tre2) -> fun (x1, x2) ->
       evalpp tre1 ppf x1 ;
       evalpp tre2 ppf x2 ;
-    | Prefix(tre_l,l,tre) ->
-      fun v -> evalpp tre_l ppf l ; evalpp tre ppf v
-    | Suffix(tre,g,tre_g) ->
-      fun v -> evalpp tre ppf v ; evalpp tre_g ppf g
+    | Prefix(tre_l,tre) ->
+      fun v -> witnesspp ppf tre_l ; evalpp tre ppf v
+    | Suffix(tre,tre_g) ->
+      fun v -> evalpp tre ppf v ; witnesspp ppf tre_g
     | Alt (treL, treR) -> begin function
         | `Left x -> evalpp treL ppf x
         | `Right x -> evalpp treR ppf x
@@ -232,11 +287,11 @@ let rec build
       let i2, w2, (id2, re2) = map_3 mark @@ build e2 in
       let grps = i1 + i2 in
       grps, Alt (id1, i1, w1, id2, w2), alt [re1 ; re2]
-    | Prefix (e_ign,_,e) ->
+    | Prefix (e_ign,e) ->
       let i, w, re = build e in
       let _, _, re_ign = build e_ign in
       i, w, seq [no_group re_ign ; re]
-    | Suffix (e,_,e_ign) ->
+    | Suffix (e,e_ign) ->
       let i, w, re = build e in
       let _, _, re_ign = build e_ign in
       i, w, seq [re ; no_group re_ign]
@@ -405,10 +460,10 @@ let rec pp
   | Opt tre -> sexp ppf "Opt" "%a" pp tre
   | Alt (tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp tre1 pp tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp tre1 pp tre2
-  | Prefix (tre1, v, tre2) ->
-    sexp ppf "Prefix" "%a@ %s@ %a" pp tre1 (eval tre1 v) pp tre2
-  | Suffix (tre1, v, tre2) ->
-    sexp ppf "Suffix" "%a@ %s@ %a" pp tre1 (eval tre2 v) pp tre2
+  | Prefix (tre1, tre2) ->
+    sexp ppf "Prefix" "%a@ %a" pp tre1 pp tre2
+  | Suffix (tre1, tre2) ->
+    sexp ppf "Suffix" "%a@ %a" pp tre1 pp tre2
   | Rep tre -> sexp ppf "Rep" "%a" pp tre
   | Mod (_,tre) -> sexp ppf "Mod" "%a" pp tre
 
