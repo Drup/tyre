@@ -56,15 +56,22 @@ A typed regular expression.
     Groups inside <code class="code">re</code> are erased.<br>
 </div>
 
-<pre><span id="VALconv"><span class="keyword">val</span> conv</span> : <code class="type">name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">conv ~name to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type. For example, this is the implementation of <a href="Tyre.html#VALpos_int"><code class="code"><span class="constructor">Tyre</span>.pos_int</code></a>:
+<pre><span id="VALconv"><span class="keyword">val</span> conv</span> : <code class="type">('a -> 'b) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">conv ~name to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.<br>
+</div>
+
+<pre><span id="VALconv_fail"><span class="keyword">val</span> conv_fail</span> : <code class="type">name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">conv_fail ~name to_ from_ tyre</code> is similar to <code class="code">conv to_ from_ tyre</code> excepts <code class="code">to_</code> is allowed to fail by returning <code class="code"><span class="constructor">None</span></code> or raising an exception. If it does, <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> will return <code class="code"><span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> (name, s)</code> with <code class="code">s</code> the substring on which the converter was called.
 <p>
 
-<pre class="codepre"><code class="code"><span class="keyword">let</span>&nbsp;pos_int&nbsp;=&nbsp;<span class="constructor">Tyre</span>.conv&nbsp;(try_&nbsp;int_of_string)&nbsp;string_of_int&nbsp;(<span class="constructor">Tyre</span>.regex&nbsp;(<span class="constructor">Re</span>.rep1&nbsp;<span class="constructor">Re</span>.digit))
-</code></pre>
+For example, this is the implementation of <a href="Tyre.html#VALpos_int"><code class="code"><span class="constructor">Tyre</span>.pos_int</code></a>:
 <p>
 
-The <code class="code">to_</code> part of the converter is allowed to fail, by returning <code class="code"><span class="constructor">None</span></code>. If it does, <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> will return <code class="code"><span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> (name, s)</code> with <code class="code">s</code> the substring on which the converter was called.<br>
+<pre class="codepre"><code class="code"><span class="keyword">let</span>&nbsp;pos_int&nbsp;=
+&nbsp;&nbsp;<span class="constructor">Tyre</span>.conv_fail&nbsp;~name:<span class="string">"pos_int"</span>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="keyword">fun</span>&nbsp;x&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Some</span>&nbsp;(int_of_string&nbsp;x))&nbsp;string_of_int
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Tyre</span>.regex&nbsp;(<span class="constructor">Re</span>.rep1&nbsp;<span class="constructor">Re</span>.digit))
+</code></pre><br>
 </div>
 
 <pre><span id="VALopt"><span class="keyword">val</span> opt</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a option <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
@@ -100,58 +107,46 @@ A generator <code class="code">g</code> will return a new value each time it's c
 <code class="code">seq tyre1 tyre2</code> matches <code class="code">tyre1</code> then <code class="code">tyre2</code> and return both values.<br>
 </div>
 
-<pre><span id="VALprefix"><span class="keyword">val</span> prefix</span> : <code class="type">'b <a href="Tyre.html#TYPEt">t</a> * 'b -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">prefix (tyre_i, s) tyre</code> matches <code class="code">tyre_i</code>, ignores the result, and then matches <code class="code">tyre</code> and returns its result.
-<p>
-
-    <code class="code">s</code> is the witness used for <a href="Tyre.html#VALeval">evaluation</a>. It is assumed (but not checked) that <code class="code">tyre_i</code> matches <code class="code">s</code>.<br>
+<pre><span id="VALprefix"><span class="keyword">val</span> prefix</span> : <code class="type">'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">prefix tyre_i tyre</code> matches <code class="code">tyre_i</code>, ignores the result, and then matches <code class="code">tyre</code> and returns its result.<br>
 </div>
 
-<pre><span id="VALprefixstr"><span class="keyword">val</span> prefixstr</span> : <code class="type">string -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">prefixstr s tyre</code> matches <code class="code">s</code> then matches <code class="code">tyre</code> and return its value.
-<p>
-
-    It is equal to <code class="code">prefix (regex (<span class="constructor">Re</span>.str s), s) tyre</code>.<br>
-</div>
-
-<pre><span id="VALsuffix"><span class="keyword">val</span> suffix</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> * 'b -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<pre><span id="VALsuffix"><span class="keyword">val</span> suffix</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
 Same as <code class="code">prefix</code>, but reversed.<br>
 </div>
-
-<pre><span id="VALsuffixstr"><span class="keyword">val</span> suffixstr</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> string -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-Same as <code class="code">prefixstr</code>, but reversed.<br>
-</div>
 <br>
-<h3 id="3_Infixoperators">Infix operators</h3>
-<p>
-
-    The tyregexs are on sides with an arrow.<br>
+<h3 id="3_Infixoperators">Infix operators</h3><br>
 
 <pre><span id="VAL(<|>)"><span class="keyword">val</span> (&lt;|&gt;)</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> -> [ `Left of 'a | `Right of 'b ] <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
 <code class="code">t &lt;|&gt; t'</code> is <code class="code">alt t t'</code>.<br>
 </div>
 
-<pre><span id="VAL(<*>)"><span class="keyword">val</span> (&lt;*&gt;)</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> -> ('a * 'b) <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">t &lt;*&gt; t'</code> is <code class="code">seq t t'</code>.<br>
+<pre><span id="VAL(<&>)"><span class="keyword">val</span> (&lt;&amp;&gt;)</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> -> ('a * 'b) <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">t &lt;&amp;&gt; t'</code> is <code class="code">seq t t'</code>.<br>
 </div>
 
-<pre><span id="VAL( *> )"><span class="keyword">val</span> ( *&gt; )</span> : <code class="type">string -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">s *&gt; t</code> is <code class="code">prefixstr s t</code>.<br>
+<pre><span id="VAL( *> )"><span class="keyword">val</span> ( *&gt; )</span> : <code class="type">'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code"> ti *&gt; t </code> is <code class="code">prefix ti t</code>.<br>
 </div>
 
-<pre><span id="VAL( <* )"><span class="keyword">val</span> ( &lt;* )</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> string -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">t &lt;* s</code> is <code class="code">suffixstr s t</code>.<br>
+<pre><span id="VAL( <* )"><span class="keyword">val</span> ( &lt;* )</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code"> t &lt;* ti </code> is <code class="code">suffix t ti</code>.<br>
 </div>
 
-<pre><span id="VAL( **> )"><span class="keyword">val</span> ( **&gt; )</span> : <code class="type">'b <a href="Tyre.html#TYPEt">t</a> * 'b -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code"> (ti,s) **&gt; t </code> is <code class="code">prefix (ti,s) t</code>.<br>
-</div>
-
-<pre><span id="VAL( <** )"><span class="keyword">val</span> ( &lt;** )</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> * 'b -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code"> t &lt;** (ti,s) </code> is <code class="code">suffix t (ti,s)</code>.<br>
-</div>
-<br>
+<pre><span class="keyword">module</span> <a href="Tyre.Infix.html">Infix</a>: <code class="code"><span class="keyword">sig</span></code> <a href="Tyre.Infix.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><br>
 <h3 id="3_Usefulcombinators">Useful combinators</h3><br>
+
+<pre><span id="VALstr"><span class="keyword">val</span> str</span> : <code class="type">string -> unit <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">str s</code> matches <code class="code">s</code> and evaluates to <code class="code">s</code>.<br>
+</div>
+
+<pre><span id="VALchar"><span class="keyword">val</span> char</span> : <code class="type">char -> unit <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">char c</code> matches <code class="code">c</code> and evaluates to <code class="code">c</code>.<br>
+</div>
+
+<pre><span id="VALblanks"><span class="keyword">val</span> blanks</span> : <code class="type">unit <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">blanks</code> matches <code class="code"><span class="constructor">Re</span>.(rep blank)</code> and doesn't return anything.<br>
+</div>
 
 <pre><span id="VALint"><span class="keyword">val</span> int</span> : <code class="type">int <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
 <code class="code">int</code> matches <code class="code">-?[0-9]+</code> and returns the matched integer.
@@ -182,12 +177,12 @@ Same as <code class="code">prefixstr</code>, but reversed.<br>
 <code class="code">list e</code> is similar to <code class="code">rep e</code>, but returns a list.<br>
 </div>
 
-<pre><span id="VALterminated_list"><span class="keyword">val</span> terminated_list</span> : <code class="type">sep:string -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a list <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<pre><span id="VALterminated_list"><span class="keyword">val</span> terminated_list</span> : <code class="type">sep:'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a list <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
 <code class="code">terminated_list ~sep tyre</code> is <code class="code"> list (tyre &lt;* sep) </code>.<br>
 </div>
 
-<pre><span id="VALseparated_list"><span class="keyword">val</span> separated_list</span> : <code class="type">sep:string -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a list <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">separated_list ~sep tyre</code> is equivalent to <code class="code">opt (e &lt;*&gt; list (sep *&gt; e))</code>.<br>
+<pre><span id="VALseparated_list"><span class="keyword">val</span> separated_list</span> : <code class="type">sep:'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a list <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">separated_list ~sep tyre</code> is equivalent to <code class="code">opt (e &lt;&amp;&gt; list (sep *&gt; e))</code>.<br>
 </div>
 <br>
 <h3 id="3_Othercombinators">Other combinators</h3>

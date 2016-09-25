@@ -15,24 +15,24 @@
 <h1>Index of values</h1>
 <table>
 <tr><td align="left"><br></td></tr>
-<tr><td><a href="Tyre.html#VAL( **> )">( **&gt; )</a> [<a href="Tyre.html">Tyre</a>]</td>
+<tr><td><a href="Tyre.Infix.html#VAL( *> )">( *&gt; )</a> [<a href="Tyre.Infix.html">Tyre.Infix</a>]</td>
 <td><div class="info">
-<code class="code"> (ti,s) **&gt; t </code> is <code class="code">prefix (ti,s) t</code>.
+<code class="code"> ti *&gt; t </code> is <code class="code">prefix ti t</code>.
 </div>
 </td></tr>
 <tr><td><a href="Tyre.html#VAL( *> )">( *&gt; )</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
-<code class="code">s *&gt; t</code> is <code class="code">prefixstr s t</code>.
+<code class="code"> ti *&gt; t </code> is <code class="code">prefix ti t</code>.
+</div>
+</td></tr>
+<tr><td><a href="Tyre.Infix.html#VAL( <* )">( &lt;* )</a> [<a href="Tyre.Infix.html">Tyre.Infix</a>]</td>
+<td><div class="info">
+<code class="code"> t &lt;* ti </code> is <code class="code">suffix t ti</code>.
 </div>
 </td></tr>
 <tr><td><a href="Tyre.html#VAL( <* )">( &lt;* )</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
-<code class="code">t &lt;* s</code> is <code class="code">suffixstr s t</code>.
-</div>
-</td></tr>
-<tr><td><a href="Tyre.html#VAL( <** )">( &lt;** )</a> [<a href="Tyre.html">Tyre</a>]</td>
-<td><div class="info">
-<code class="code"> t &lt;** (ti,s) </code> is <code class="code">suffix t (ti,s)</code>.
+<code class="code"> t &lt;* ti </code> is <code class="code">suffix t ti</code>.
 </div>
 </td></tr>
 <tr><td><a href="Tyre.html#VAL(-->)">(--&gt;)</a> [<a href="Tyre.html">Tyre</a>]</td>
@@ -40,9 +40,19 @@
 <code class="code">tyre --&gt; f</code> is <code class="code"><span class="constructor">Route</span> (tyre, f)</code>.
 </div>
 </td></tr>
-<tr><td><a href="Tyre.html#VAL(<*>)">(&lt;*&gt;)</a> [<a href="Tyre.html">Tyre</a>]</td>
+<tr><td><a href="Tyre.Infix.html#VAL(<&>)">(&lt;&amp;&gt;)</a> [<a href="Tyre.Infix.html">Tyre.Infix</a>]</td>
 <td><div class="info">
-<code class="code">t &lt;*&gt; t'</code> is <code class="code">seq t t'</code>.
+<code class="code">t &lt;&amp;&gt; t'</code> is <code class="code">seq t t'</code>.
+</div>
+</td></tr>
+<tr><td><a href="Tyre.html#VAL(<&>)">(&lt;&amp;&gt;)</a> [<a href="Tyre.html">Tyre</a>]</td>
+<td><div class="info">
+<code class="code">t &lt;&amp;&gt; t'</code> is <code class="code">seq t t'</code>.
+</div>
+</td></tr>
+<tr><td><a href="Tyre.Infix.html#VAL(<|>)">(&lt;|&gt;)</a> [<a href="Tyre.Infix.html">Tyre.Infix</a>]</td>
+<td><div class="info">
+<code class="code">t &lt;|&gt; t'</code> is <code class="code">alt t t'</code>.
 </div>
 </td></tr>
 <tr><td><a href="Tyre.html#VAL(<|>)">(&lt;|&gt;)</a> [<a href="Tyre.html">Tyre</a>]</td>
@@ -57,6 +67,11 @@
 </div>
 </td></tr>
 <tr><td align="left"><br>B</td></tr>
+<tr><td><a href="Tyre.html#VALblanks">blanks</a> [<a href="Tyre.html">Tyre</a>]</td>
+<td><div class="info">
+<code class="code">blanks</code> matches <code class="code"><span class="constructor">Re</span>.(rep blank)</code> and doesn't return anything.
+</div>
+</td></tr>
 <tr><td><a href="Tyre.html#VALbool">bool</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
 <code class="code">bool</code> matches <code class="code"><span class="keyword">true</span><span class="keywordsign">|</span><span class="keyword">false</span></code> and returns the matched boolean.
@@ -65,6 +80,11 @@
 <tr><td><a href="Tyre.Internal.html#VALbuild">build</a> [<a href="Tyre.Internal.html">Tyre.Internal</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>C</td></tr>
+<tr><td><a href="Tyre.html#VALchar">char</a> [<a href="Tyre.html">Tyre</a>]</td>
+<td><div class="info">
+<code class="code">char c</code> matches <code class="code">c</code> and evaluates to <code class="code">c</code>.
+</div>
+</td></tr>
 <tr><td><a href="Tyre.html#VALcompile">compile</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
 <code class="code">compile tyre</code> is the compiled tyregex representing <code class="code">tyre</code>.
@@ -73,6 +93,11 @@
 <tr><td><a href="Tyre.html#VALconv">conv</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
 <code class="code">conv ~name to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.
+</div>
+</td></tr>
+<tr><td><a href="Tyre.html#VALconv_fail">conv_fail</a> [<a href="Tyre.html">Tyre</a>]</td>
+<td><div class="info">
+<code class="code">conv_fail ~name to_ from_ tyre</code> is similar to <code class="code">conv to_ from_ tyre</code> excepts <code class="code">to_</code> is allowed to fail by returning <code class="code"><span class="constructor">None</span></code> or raising an exception.
 </div>
 </td></tr>
 <tr><td align="left"><br>E</td></tr>
@@ -149,12 +174,7 @@
 <td></td></tr>
 <tr><td><a href="Tyre.html#VALprefix">prefix</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
-<code class="code">prefix (tyre_i, s) tyre</code> matches <code class="code">tyre_i</code>, ignores the result, and then matches <code class="code">tyre</code> and returns its result.
-</div>
-</td></tr>
-<tr><td><a href="Tyre.html#VALprefixstr">prefixstr</a> [<a href="Tyre.html">Tyre</a>]</td>
-<td><div class="info">
-<code class="code">prefixstr s tyre</code> matches <code class="code">s</code> then matches <code class="code">tyre</code> and return its value.
+<code class="code">prefix tyre_i tyre</code> matches <code class="code">tyre_i</code>, ignores the result, and then matches <code class="code">tyre</code> and returns its result.
 </div>
 </td></tr>
 <tr><td align="left"><br>R</td></tr>
@@ -182,7 +202,7 @@
 <tr><td align="left"><br>S</td></tr>
 <tr><td><a href="Tyre.html#VALseparated_list">separated_list</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
-<code class="code">separated_list ~sep tyre</code> is equivalent to <code class="code">opt (e &lt;*&gt; list (sep *&gt; e))</code>.
+<code class="code">separated_list ~sep tyre</code> is equivalent to <code class="code">opt (e &lt;&amp;&gt; list (sep *&gt; e))</code>.
 </div>
 </td></tr>
 <tr><td><a href="Tyre.html#VALseq">seq</a> [<a href="Tyre.html">Tyre</a>]</td>
@@ -192,14 +212,14 @@
 </td></tr>
 <tr><td><a href="Tyre.html#VALshortest">shortest</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td></td></tr>
+<tr><td><a href="Tyre.html#VALstr">str</a> [<a href="Tyre.html">Tyre</a>]</td>
+<td><div class="info">
+<code class="code">str s</code> matches <code class="code">s</code> and evaluates to <code class="code">s</code>.
+</div>
+</td></tr>
 <tr><td><a href="Tyre.html#VALsuffix">suffix</a> [<a href="Tyre.html">Tyre</a>]</td>
 <td><div class="info">
 Same as <code class="code">prefix</code>, but reversed.
-</div>
-</td></tr>
-<tr><td><a href="Tyre.html#VALsuffixstr">suffixstr</a> [<a href="Tyre.html">Tyre</a>]</td>
-<td><div class="info">
-Same as <code class="code">prefixstr</code>, but reversed.
 </div>
 </td></tr>
 <tr><td align="left"><br>T</td></tr>
