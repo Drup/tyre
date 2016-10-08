@@ -390,7 +390,7 @@ let rec extract_route ~original i subs = function
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
   | WRoute (id, grps, wit, f) :: l ->
-    if Re.marked subs id then
+    if Re.Mark.test subs id then
       let _, v = extract ~original wit i subs in f v
     else
       extract_route ~original (i+grps) subs l
