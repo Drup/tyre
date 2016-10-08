@@ -190,6 +190,8 @@ Same as <code class="code">prefix</code>, but reversed.<br>
 
     See <code class="code"><span class="constructor">Re</span></code> for details on the semantics of those combinators.<br>
 
+<pre><span id="VALstart"><span class="keyword">val</span> start</span> : <code class="type">unit <a href="Tyre.html#TYPEt">t</a></code></pre>
+<pre><span id="VALstop"><span class="keyword">val</span> stop</span> : <code class="type">unit <a href="Tyre.html#TYPEt">t</a></code></pre>
 <pre><span id="VALword"><span class="keyword">val</span> word</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre>
 <pre><span id="VALwhole_string"><span class="keyword">val</span> whole_string</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre>
 <pre><span id="VALlongest"><span class="keyword">val</span> longest</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre>
@@ -206,9 +208,8 @@ A compiled typed regular expression.<br>
 </div>
 
 
-<pre><span id="VALcompile"><span class="keyword">val</span> compile</span> : <code class="type">?whole:bool -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEre">re</a></code></pre><div class="info ">
-<code class="code">compile tyre</code> is the compiled tyregex representing <code class="code">tyre</code>.
-    if <code class="code">whole</code> is <code class="code"><span class="keyword">true</span></code> (the default), the whole string is matched.<br>
+<pre><span id="VALcompile"><span class="keyword">val</span> compile</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEre">re</a></code></pre><div class="info ">
+<code class="code">compile tyre</code> is the compiled tyregex representing <code class="code">tyre</code>.<br>
 </div>
 
 <pre><span id="TYPEerror"><span class="keyword">type</span> <code class="type">'a</code> error</span> = <code class="type">[ `ConverterFailure of string * string | `NoMatch of 'a <a href="Tyre.html#TYPEre">re</a> * string ]</code> </pre>
@@ -254,10 +255,9 @@ A route is a pair of a tyregex and a handler.
 <code class="code">tyre --&gt; f</code> is <code class="code"><span class="constructor">Route</span> (tyre, f)</code>.<br>
 </div>
 
-<pre><span id="VALroute"><span class="keyword">val</span> route</span> : <code class="type">?whole:bool -> 'a <a href="Tyre.html#TYPEroute">route</a> list -> 'a <a href="Tyre.html#TYPEre">re</a></code></pre><div class="info ">
+<pre><span id="VALroute"><span class="keyword">val</span> route</span> : <code class="type">'a <a href="Tyre.html#TYPEroute">route</a> list -> 'a <a href="Tyre.html#TYPEre">re</a></code></pre><div class="info ">
 <code class="code">route [ tyre1 --&gt; f1 ; tyre2 --&gt; f2 ]</code> produces a compiled
     tyregex such that, if <code class="code">tyre1</code> matches, <code class="code">f1</code> is called, and so on.
-    if <code class="code">whole</code> is <code class="code"><span class="keyword">true</span></code> (the default), the whole string is matched.
 <p>
 
     The compiled tyregex shoud be used with <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a>.<br>
