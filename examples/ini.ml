@@ -37,7 +37,7 @@ let named_section =
   line section_title <&> section
 
 let ini =
-  section <&> Tyre.list named_section
+  Tyre.start *> section <&> Tyre.list named_section <* Tyre.stop
   |> Tyre.conv
     (fun (anon, named) -> { anon ; named })
     (fun { anon ; named } -> (anon, named))

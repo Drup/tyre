@@ -22,7 +22,7 @@ end
 open Tyre
 
 let t' title desc re v s =
-  let cre = Tyre.compile re in
+  let cre = Tyre.(compile (start *> re <* stop)) in
   A.(check (result desc reject))
     (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
   A.(check bool) (title^" execp") (Tyre.execp cre s) true ;

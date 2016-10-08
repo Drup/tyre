@@ -164,6 +164,9 @@ val separated_list : sep:_ t -> 'a t -> 'a list t
 
     See {!Re} for details on the semantics of those combinators. *)
 
+val start : unit t
+val stop : unit t
+
 val word : 'a t -> 'a t
 val whole_string : 'a t -> 'a t
 val longest : 'a t -> 'a t
@@ -178,9 +181,8 @@ val nest : 'a t -> 'a t
 type 'a re
 (** A compiled typed regular expression. *)
 
-val compile : ?whole:bool -> 'a t -> 'a re
+val compile : 'a t -> 'a re
 (** [compile tyre] is the compiled tyregex representing [tyre].
-    if [whole] is [true] (the default), the whole string is matched.
 *)
 
 type 'a error = [
@@ -219,10 +221,9 @@ type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
 val (-->) : 'x t -> ('x -> 'a) -> 'a route
 (** [tyre --> f] is [Route (tyre, f)]. *)
 
-val route : ?whole:bool -> 'a route list -> 'a re
+val route : 'a route list -> 'a re
 (** [route [ tyre1 --> f1 ; tyre2 --> f2 ]] produces a compiled
     tyregex such that, if [tyre1] matches, [f1] is called, and so on.
-    if [whole] is [true] (the default), the whole string is matched.
 
     The compiled tyregex shoud be used with {!exec}.
 *)
