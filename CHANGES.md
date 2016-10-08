@@ -1,5 +1,7 @@
 # Change Log
 
+## Unreleased
+
 ## 0.2 (08 October 2016)
 * Rename `<?>` to `<|>`
 * Rename `<*>` to `<&>`
