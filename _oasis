@@ -51,7 +51,7 @@ Executable example_dim
 
 Test example_dim
   Command: $example_dim
-  TestTools: test
+  TestTools: example_dim
   WorkingDirectory: _build
 
 Executable example_ini
@@ -62,7 +62,7 @@ Executable example_ini
 
 Test example_ini
   Command: $example_ini
-  TestTools: test
+  TestTools: example_ini
   WorkingDirectory: _build
 
 
