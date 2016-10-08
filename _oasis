@@ -17,6 +17,7 @@ Library tyre
   Path: src
   BuildDepends: re, result
   Modules: Tyre
+  DataFiles: CHANGES.md
 
 AlphaFeatures: ocamlbuild_more_args
 Document api
@@ -28,6 +29,8 @@ Document api
   XOCamlbuildExtraArgs:
     "-docflags '-colorize-code -short-functors -charset utf-8'"
   XOCamlbuildLibraries: tyre
+
+
 
 Executable test
   Build$: flag(tests)
@@ -61,3 +64,14 @@ Test example_ini
   Command: $example_ini
   TestTools: test
   WorkingDirectory: _build
+
+
+
+SourceRepository head
+  Type: git
+  Location: https://github.com/Drup/tyre.git
+  Browser: https://github.com/Drup/tyre
+
+#Local Variables:
+#compile-command: "oasis setup"
+#End:
