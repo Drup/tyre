@@ -17,7 +17,7 @@ Library tyre
   Path: src
   BuildDepends: re, result
   Modules: Tyre
-  DataFiles: CHANGES.md
+  DataFiles: ../CHANGES.md
 
 AlphaFeatures: ocamlbuild_more_args
 Document api
