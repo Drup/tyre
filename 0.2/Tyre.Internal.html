@@ -1,0 +1,163 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Tyre.Infix.html">
+<link rel="Up" href="Tyre.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Tyre" rel="Chapter" href="Tyre.html"><title>Tyre.Internal</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Tyre.Infix.html" title="Tyre.Infix">Previous</a>
+&nbsp;<a class="up" href="Tyre.html" title="Tyre">Up</a>
+&nbsp;</div>
+<h1>Module <a href="type_Tyre.Internal.html">Tyre.Internal</a></h1>
+
+<pre><span class="keyword">module</span> Internal: <code class="code"><span class="keyword">sig</span></code> <a href="Tyre.Internal.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><div class="info module top">
+Internal types<br>
+</div>
+<hr width="100%">
+
+<pre><span id="EXCEPTIONConverterFailure"><span class="keyword">exception</span> ConverterFailure</span> <span class="keyword">of</span> <code class="type">string * string</code></pre>
+
+<pre><code><span id="TYPEconv"><span class="keyword">type</span> <code class="type">('a, 'b)</code> conv</span> = {</code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTconv.to_">to_</span>&nbsp;: <code class="type">'a -> 'b option</code>;</code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code>&nbsp;&nbsp;</code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTconv.from_">from_</span>&nbsp;: <code class="type">'b -> 'a</code>;</code></td>
+
+</tr></table>
+}
+
+
+
+<pre><code><span id="TYPEraw"><span class="keyword">type</span> <code class="type">'a</code> raw</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Regexp"><span class="constructor">Regexp</span></span> <span class="keyword">:</span> <code class="type">Re.t * Re.re Lazy.t</code> <span class="keyword">-></span> <code class="type">string <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Conv"><span class="constructor">Conv</span></span> <span class="keyword">:</span> <code class="type">string * 'a0 <a href="Tyre.Internal.html#TYPEraw">raw</a> * ('a0, 'b) <a href="Tyre.Internal.html#TYPEconv">conv</a></code> <span class="keyword">-></span> <code class="type">'b <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Opt"><span class="constructor">Opt</span></span> <span class="keyword">:</span> <code class="type">'a1 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">'a1 option <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Alt"><span class="constructor">Alt</span></span> <span class="keyword">:</span> <code class="type">'a2 <a href="Tyre.Internal.html#TYPEraw">raw</a> * 'b0 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">[ `Left of 'a2 | `Right of 'b0 ] <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Seq"><span class="constructor">Seq</span></span> <span class="keyword">:</span> <code class="type">'a3 <a href="Tyre.Internal.html#TYPEraw">raw</a> * 'b1 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">('a3 * 'b1) <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Prefix"><span class="constructor">Prefix</span></span> <span class="keyword">:</span> <code class="type">'b2 <a href="Tyre.Internal.html#TYPEraw">raw</a> * 'a4 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">'a4 <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Suffix"><span class="constructor">Suffix</span></span> <span class="keyword">:</span> <code class="type">'a5 <a href="Tyre.Internal.html#TYPEraw">raw</a> * 'b3 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">'a5 <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Rep"><span class="constructor">Rep</span></span> <span class="keyword">:</span> <code class="type">'a6 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">'a6 <a href="Tyre.html#TYPEgen">Tyre.gen</a> <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTraw.Mod"><span class="constructor">Mod</span></span> <span class="keyword">:</span> <code class="type">(Re.t -> Re.t) * 'a7 <a href="Tyre.Internal.html#TYPEraw">raw</a></code> <span class="keyword">-></span> <code class="type">'a7 <a href="Tyre.Internal.html#TYPEraw">raw</a></code></code></td>
+
+</tr></table>
+
+
+
+<pre><span id="VALfrom_t"><span class="keyword">val</span> from_t</span> : <code class="type">'a <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'a <a href="Tyre.Internal.html#TYPEraw">raw</a></code></pre>
+<pre><span id="VALto_t"><span class="keyword">val</span> to_t</span> : <code class="type">'a <a href="Tyre.Internal.html#TYPEraw">raw</a> -> 'a <a href="Tyre.html#TYPEt">Tyre.t</a></code></pre>
+<pre><code><span id="TYPEwit"><span class="keyword">type</span> <code class="type">'_</code> wit</span> = </code></pre><table class="typetable">
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTwit.Regexp"><span class="constructor">Regexp</span></span> <span class="keyword">:</span> <code class="type">Re.t</code> <span class="keyword">-></span> <code class="type">string <a href="Tyre.Internal.html#TYPEwit">wit</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTwit.Conv"><span class="constructor">Conv</span></span> <span class="keyword">:</span> <code class="type">string * 'a <a href="Tyre.Internal.html#TYPEwit">wit</a> * ('a, 'b) <a href="Tyre.Internal.html#TYPEconv">conv</a></code> <span class="keyword">-></span> <code class="type">'b <a href="Tyre.Internal.html#TYPEwit">wit</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTwit.Opt"><span class="constructor">Opt</span></span> <span class="keyword">:</span> <code class="type">Re.markid * int * 'a0 <a href="Tyre.Internal.html#TYPEwit">wit</a></code> <span class="keyword">-></span> <code class="type">'a0 option <a href="Tyre.Internal.html#TYPEwit">wit</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTwit.Alt"><span class="constructor">Alt</span></span> <span class="keyword">:</span> <code class="type">Re.markid * int * 'a1 <a href="Tyre.Internal.html#TYPEwit">wit</a> * Re.markid * 'b0 <a href="Tyre.Internal.html#TYPEwit">wit</a></code> <span class="keyword">-></span> <code class="type">[ `Left of 'a1 | `Right of 'b0 ] <a href="Tyre.Internal.html#TYPEwit">wit</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTwit.Seq"><span class="constructor">Seq</span></span> <span class="keyword">:</span> <code class="type">'a2 <a href="Tyre.Internal.html#TYPEwit">wit</a> * 'b1 <a href="Tyre.Internal.html#TYPEwit">wit</a></code> <span class="keyword">-></span> <code class="type">('a2 * 'b1) <a href="Tyre.Internal.html#TYPEwit">wit</a></code></code></td>
+
+</tr>
+<tr>
+<td align="left" valign="top" >
+<code><span class="keyword">|</span></code></td>
+<td align="left" valign="top" >
+<code><span id="TYPEELTwit.Rep"><span class="constructor">Rep</span></span> <span class="keyword">:</span> <code class="type">'a3 <a href="Tyre.Internal.html#TYPEwit">wit</a> * Re.re</code> <span class="keyword">-></span> <code class="type">'a3 <a href="Tyre.html#TYPEgen">Tyre.gen</a> <a href="Tyre.Internal.html#TYPEwit">wit</a></code></code></td>
+
+</tr></table>
+
+
+
+<pre><span id="VALbuild"><span class="keyword">val</span> build</span> : <code class="type">'a <a href="Tyre.Internal.html#TYPEraw">raw</a> -> int * 'a <a href="Tyre.Internal.html#TYPEwit">wit</a> * Re.t</code></pre>
+<pre><span id="VALextract"><span class="keyword">val</span> extract</span> : <code class="type">original:string -> 'a <a href="Tyre.Internal.html#TYPEwit">wit</a> -> int -> Re.substrings -> int * 'a</code></pre></body></html>
