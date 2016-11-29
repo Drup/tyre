@@ -49,7 +49,7 @@ let map_3 f (x,y,z) = (x, y, f z)
 
 type 'a gen = unit -> 'a option
 
-module Types = struct
+module T = struct
 
   type ('a, 'b) conv = {
     to_ : 'a -> 'b option ;
@@ -80,9 +80,7 @@ module Types = struct
 
 end
 
-open Types
-
-type 'a t = 'a raw
+type 'a t = 'a T.raw
 
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
@@ -99,8 +97,8 @@ let conv to_ from_ x : _ t =
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
-let prefix x a = Prefix (x, a)
-let suffix a x = Suffix (a, x)
+let prefix x a : _ t = Prefix (x, a)
+let suffix a x : _ t = Suffix (a, x)
 let opt a : _ t = Opt a
 
 module Infix = struct
@@ -120,7 +118,7 @@ let rep1 x = x <&> rep x
 (* [modifier] is unsafe in general (for example [modifier Re.group]).
    It shouldn't be exposed to the user.
 *)
-let modifier f re = Mod (f, re)
+let modifier f re : _ t = Mod (f, re)
 
 let word re = modifier Re.word re
 let whole_string re = modifier Re.whole_string re
@@ -205,7 +203,7 @@ let separated_list ~sep e =
 
 let rec witnesspp
   : type a . Format.formatter -> a t -> unit
-  = fun ppf tre -> match tre with
+  = fun ppf tre -> let open T in match tre with
     | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
     | Conv (_, tre, _) -> witnesspp ppf tre
     | Opt _ -> ()
@@ -234,7 +232,7 @@ let rec pprep f ppf gen = match gen () with
 
 let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
-  = fun tre ppf -> match tre with
+  = fun tre ppf -> let open T in match tre with
     | Regexp (_, lazy cre) -> begin function v ->
         if not @@ Re.execp cre v then
           invalid_arg @@
@@ -275,8 +273,8 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
 *)
 
 let rec build
-  : type a. a t -> int * a wit * Re.t
-  = let open! Re in function
+  : type a. a t -> int * a T.wit * Re.t
+  = let open! Re in let open T in function
     | Regexp (re, _) ->
       1, Regexp re, group @@ no_group re
     | Conv (name , e, conv) ->
@@ -320,9 +318,9 @@ exception ConverterFailure of string * string
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let rec extract
-  : type a. original:string -> a wit -> int -> Re.substrings -> int * a
-  = fun ~original rea i s -> match rea with
     | Regexp _ -> i+1, Re.get s i
+  : type a. original:string -> a T.wit -> int -> Re.substrings -> int * a
+  = fun ~original rea i s -> let open T in match rea with
     | Conv (name, w, conv) ->
       let i, v = extract ~original w i s in
       begin match conv.to_ v with
@@ -347,7 +345,7 @@ let rec extract
     | Rep (e,re) -> i+1, extract_list ~original e re i s
 
 and extract_top
-  : type a . original:string -> a wit -> Re.substrings -> a
+  : type a . original:string -> a T.wit -> Re.substrings -> a
   = fun ~original e s -> snd @@ extract ~original e 1 s
 
 (** We need to re-match the string for lists, in order to extract
@@ -357,7 +355,7 @@ and extract_top
     possible as it would be equivalent to counting in an automaton).
 *)
 and extract_list
-  : type a. original:string -> a wit -> Re.re -> int -> Re.substrings -> a gen
+  : type a. original:string -> a T.wit -> Re.re -> int -> Re.substrings -> a gen
   = fun ~original e re i s ->
     let aux = extract_top ~original e in
     let (pos, pos') = Re.get_ofs s i in
@@ -373,7 +371,7 @@ let route re f = Route (re, f)
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.markid * int * 'a wit * ('a -> 'r) -> 'r wit_route
+    WRoute : Re.markid * int * 'a T.wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -403,7 +401,7 @@ let extract_route_top ~original l subs = extract_route ~original 1 subs l
 (** {4 Compilation and execution} *)
 
 type 'r info =
-  | One of 'r wit
+  | One of 'r T.wit
   | Routes of 'r wit_route list
 
 type 'a re = { info : 'a info ; cre : Re.re }
@@ -455,7 +453,7 @@ let rec pp_list pp ppf = function
 
 let rec pp
   : type a. _ -> a t -> unit
-  = fun ppf -> function
+  = fun ppf -> let open T in function
   | Regexp (re,_) -> sexp ppf "Re" "%a" Re.pp re
   | Conv (name,tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp tre
   | Opt tre -> sexp ppf "Opt" "%a" pp tre
@@ -469,9 +467,9 @@ let rec pp
   | Mod (_,tre) -> sexp ppf "Mod" "%a" pp tre
 
 let rec pp_wit
-  : type a. _ -> a wit -> unit
-  = fun ppf -> function
   | Regexp re -> sexp ppf "Re" "%a" Re.pp re
+  : type a. _ -> a T.wit -> unit
+  = fun ppf -> let open T in function
   | Conv (name, tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp_wit tre
   | Opt (_, _, tre) -> sexp ppf "Opt" "%a" pp_wit tre
   | Alt (_, _, tre1, _, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
@@ -489,7 +487,7 @@ let pp_re ppf = function
     sexp ppf "Route" "%a@ %a" Re.pp_re cre (pp_list pp_wit_route) wl
 
 module Internal = struct
-  include Types
+  include T
 
   let to_t x = x
   let from_t x = x
