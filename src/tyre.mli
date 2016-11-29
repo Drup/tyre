@@ -281,7 +281,7 @@ module Internal : sig
     | Regexp : Re.t -> string wit
     | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
-    | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
+    | Alt    : Re.markid * int * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit

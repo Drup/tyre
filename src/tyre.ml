@@ -72,7 +72,7 @@ module T = struct
     | Regexp : Re.t -> string wit
     | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
-    | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
+    | Alt    : Re.markid * int * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
@@ -285,9 +285,9 @@ let rec build
       i, Opt (id,i,w), opt re
     | Alt (e1,e2) ->
       let i1, w1, (id1, re1) = map_3 mark @@ build e1 in
-      let i2, w2, (id2, re2) = map_3 mark @@ build e2 in
+      let i2, w2, re2 = build e2 in
       let grps = i1 + i2 in
-      grps, Alt (id1, i1, w1, id2, w2), alt [re1 ; re2]
+      grps, Alt (id1, i1, w1, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
       let i, w, re = build e in
       let _, _, re_ign = build e_ign in
@@ -330,14 +330,12 @@ let rec extract
     | Opt (id,grps,w) ->
       if not @@ Re.marked s id then i+grps, None
       else map_snd (fun x -> Some x) @@ extract ~original w i s
-    | Alt (i1,grps,w1,id2,w2) ->
+    | Alt (i1,grps,w1,w2) ->
       if Re.marked s i1 then
         map_snd (fun x -> `Left x) @@ extract ~original w1 i s
-      else if Re.marked s id2 then
-        map_snd (fun x -> `Right x) @@ extract ~original w2 (i+grps) s
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
-        assert false
+        map_snd (fun x -> `Right x) @@ extract ~original w2 (i+grps) s
     | Seq (e1,e2) ->
       let i, v1 = extract ~original e1 i s in
       let i, v2 = extract ~original e2 i s in
@@ -472,7 +470,7 @@ let rec pp_wit
   = fun ppf -> let open T in function
   | Conv (name, tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp_wit tre
   | Opt (_, _, tre) -> sexp ppf "Opt" "%a" pp_wit tre
-  | Alt (_, _, tre1, _, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | Alt (_, _, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Rep (w, re) -> sexp ppf "Rep" "%a@ %a" pp_wit w Re.pp_re re
 
