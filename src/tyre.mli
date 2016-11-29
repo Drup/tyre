@@ -278,7 +278,7 @@ module Internal : sig
   val to_t : 'a raw -> 'a t
 
   type _ wit =
-    | Regexp : Re.t -> string wit
+    | Lit    : string wit
     | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
     | Alt    : Re.markid * int * 'a wit * 'b wit

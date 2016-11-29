@@ -69,7 +69,7 @@ module T = struct
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   type _ wit =
-    | Regexp : Re.t -> string wit
+    | Lit    : string wit
     | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
     | Alt    : Re.markid * int * 'a wit * 'b wit
@@ -276,7 +276,7 @@ let rec build
   : type a. a t -> int * a T.wit * Re.t
   = let open! Re in let open T in function
     | Regexp (re, _) ->
-      1, Regexp re, group @@ no_group re
+      1, Lit, group @@ no_group re
     | Conv (name , e, conv) ->
       let i, w, re = build e in
       i, Conv (name, w, conv), re
@@ -318,9 +318,9 @@ exception ConverterFailure of string * string
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let rec extract
-    | Regexp _ -> i+1, Re.get s i
   : type a. original:string -> a T.wit -> int -> Re.substrings -> int * a
   = fun ~original rea i s -> let open T in match rea with
+    | Lit -> i+1, Re.get s i
     | Conv (name, w, conv) ->
       let i, v = extract ~original w i s in
       begin match conv.to_ v with
@@ -465,9 +465,9 @@ let rec pp
   | Mod (_,tre) -> sexp ppf "Mod" "%a" pp tre
 
 let rec pp_wit
-  | Regexp re -> sexp ppf "Re" "%a" Re.pp re
   : type a. _ -> a T.wit -> unit
   = fun ppf -> let open T in function
+  | Lit -> sexp ppf "Lit" ""
   | Conv (name, tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp_wit tre
   | Opt (_, _, tre) -> sexp ppf "Opt" "%a" pp_wit tre
   | Alt (_, _, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
