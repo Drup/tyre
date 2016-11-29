@@ -21,21 +21,27 @@ end
 
 open Tyre
 
-let t' title desc re v s =
-  let cre = Tyre.(compile (start *> re <* stop)) in
+let test title desc re v s =
+  let cre = Tyre.compile re in
   A.(check (result desc reject))
     (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
   A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
-let t title desc re v s =
-  title, `Quick, fun () -> t' title desc re v s
+let t' title desc re v s =
+  title, `Quick, fun () -> test title desc re v s
 
-let topt title desc re v s s' =
+let t title desc re v s =
+  t' title desc (Tyre.whole_string re) v s
+
+let topt' title desc re v s s' =
   title, `Quick,
   fun () ->
-    t' (title ^" some") (A.option desc) re (Some v) s ;
-    t' (title ^" none") (A.option desc) re None s'
+    test (title ^" some") (A.option desc) re (Some v) s ;
+    test (title ^" none") (A.option desc) re None s'
+
+let topt title desc re v s s' =
+  topt' title desc (Tyre.whole_string re) v s s'
 
 let basics = [
   t "int" A.int int 42 "42" ;
@@ -52,6 +58,11 @@ let basics = [
 
   topt "int option" A.int (opt int) 3 "3" "" ;
   t "int seq" A.(pair int bool) (int <&> bool) (3,true) "3true" ;
+]
+
+let notwhole = [
+  topt' "int option" A.int (opt int) 3 "3" "" ;
+  t' "separated list" A.(list int) (separated_list (char ',') int) [4;4;4] "4,4,4" ;
 ]
 
 let prefix_suffix = [
@@ -107,6 +118,7 @@ let route_test = [
 
 let () = Alcotest.run "tyre" [
     "basics", basics ;
+    "not whole", notwhole ;
     "prefix suffix", prefix_suffix ;
     "composed", composed ;
     "routes", route_test ;
