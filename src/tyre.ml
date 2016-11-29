@@ -52,14 +52,14 @@ type 'a gen = unit -> 'a option
 module T = struct
 
   type ('a, 'b) conv = {
-    to_ : 'a -> 'b option ;
+    to_ : 'a -> 'b ;
     from_ : 'b -> 'a ;
   }
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
+    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
@@ -70,7 +70,7 @@ module T = struct
 
   type _ wit =
     | Lit    : string wit
-    | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
+    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Re.markid * int * 'a wit -> 'a option wit
     | Alt    : Re.markid * int * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
@@ -86,13 +86,27 @@ let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
 
-let conv_fail ~name to_ from_ x : _ t =
-  let to_ x = try to_ x with _ -> None in
-  Conv (name, x, {to_; from_})
+(* Converters
+
+   The implementation here assume converter failures are rare.
+   This way, we avoid allocating an option and using an exception handler in
+   the non-failing case.
+*)
+exception ConverterFailure of exn
+
+let conv_fail to_ from_ x : _ t =
+  let fail exn =
+    raise (ConverterFailure exn)
+  in
+  let to_ x = match to_ x with
+    | Ok x -> x
+    | Error exn -> fail exn
+    | exception exn -> fail exn
+  in
+  Conv (x, {to_; from_})
 
 let conv to_ from_ x : _ t =
-  let to_ x = Some (to_ x) in
-  Conv ("", x, {to_; from_})
+  Conv (x, {to_; from_})
 
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
@@ -149,8 +163,6 @@ module Regex = struct
 
 end
 
-let some f x = Some (f x)
-
 let unit s re =
   conv
     (fun _ -> ())
@@ -169,16 +181,16 @@ let char c =
 let blanks = unit "" (Re.rep Re.blank)
 
 let pos_int =
-  conv_fail "pos_int" (some int_of_string) string_of_int (regex Regex.pos_int)
+  conv int_of_string string_of_int (regex Regex.pos_int)
 
 let int =
-  conv_fail "int" (some int_of_string) string_of_int (regex Regex.int)
+  conv int_of_string string_of_int (regex Regex.int)
 
 let float =
-  conv_fail "float" (some float_of_string) string_of_float (regex Regex.float)
+  conv float_of_string string_of_float (regex Regex.float)
 
 let bool =
-  conv_fail "bool" (some bool_of_string) string_of_bool (regex Regex.bool)
+  conv bool_of_string string_of_bool (regex Regex.bool)
 
 let list e =
   conv Gen.to_list Gen.of_list (rep e)
@@ -205,7 +217,7 @@ let rec witnesspp
   : type a . Format.formatter -> a t -> unit
   = fun ppf tre -> let open T in match tre with
     | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
-    | Conv (_, tre, _) -> witnesspp ppf tre
+    | Conv (tre, _) -> witnesspp ppf tre
     | Opt _ -> ()
     | Alt (tre1, _) -> witnesspp ppf tre1
     | Seq (tre1, tre2) ->
@@ -239,7 +251,7 @@ let rec evalpp
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
         pstr ppf v
       end
-    | Conv (_, tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
+    | Conv (tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
     | Opt p -> begin function
         | None -> pstr ppf ""
         | Some x -> evalpp p ppf x
@@ -277,9 +289,9 @@ let rec build
   = let open! Re in let open T in function
     | Regexp (re, _) ->
       1, Lit, group @@ no_group re
-    | Conv (name , e, conv) ->
+    | Conv (e, conv) ->
       let i, w, re = build e in
-      i, Conv (name, w, conv), re
+      i, Conv (w, conv), re
     | Opt e ->
       let i, w, (id, re) = map_3 mark @@ build e in
       i, Opt (id,i,w), opt re
@@ -310,8 +322,6 @@ let rec build
 
 (** {3 Extraction.} *)
 
-exception ConverterFailure of string * string
-
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
 
@@ -321,12 +331,9 @@ let rec extract
   : type a. original:string -> a T.wit -> int -> Re.substrings -> int * a
   = fun ~original rea i s -> let open T in match rea with
     | Lit -> i+1, Re.get s i
-    | Conv (name, w, conv) ->
+    | Conv (w, conv) ->
       let i, v = extract ~original w i s in
-      begin match conv.to_ v with
-        | Some v -> (i, v)
-        | None -> raise (ConverterFailure (name, Re.get s i))
-      end
+      (i, conv.to_ v s i)
     | Opt (id,grps,w) ->
       if not @@ Re.marked s id then i+grps, None
       else map_snd (fun x -> Some x) @@ extract ~original w i s
@@ -417,7 +424,7 @@ let route l =
 
 type 'a error = [
   | `NoMatch of 'a re * string
-  | `ConverterFailure of string * string
+  | `ConverterFailure of exn
 ]
 
 let exec ?pos ?len ({ info ; cre } as tcre) original =
@@ -430,8 +437,8 @@ let exec ?pos ?len ({ info ; cre } as tcre) original =
     in
     try
       Result.Ok (f subs)
-    with ConverterFailure (name, s) ->
-      Result.Error (`ConverterFailure (name, s))
+    with ConverterFailure exn ->
+      Result.Error (`ConverterFailure exn)
 
 let execp ?pos ?len {cre ; _ } original =
   Re.execp ?pos ?len cre original
@@ -453,7 +460,7 @@ let rec pp
   : type a. _ -> a t -> unit
   = fun ppf -> let open T in function
   | Regexp (re,_) -> sexp ppf "Re" "%a" Re.pp re
-  | Conv (name,tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp tre
+  | Conv (tre,_) -> sexp ppf "Conv" "%a" pp tre
   | Opt tre -> sexp ppf "Opt" "%a" pp tre
   | Alt (tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp tre1 pp tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp tre1 pp tre2
@@ -468,7 +475,7 @@ let rec pp_wit
   : type a. _ -> a T.wit -> unit
   = fun ppf -> let open T in function
   | Lit -> sexp ppf "Lit" ""
-  | Conv (name, tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp_wit tre
+  | Conv (tre,_) -> sexp ppf "Conv" "%a" pp_wit tre
   | Opt (_, _, tre) -> sexp ppf "Opt" "%a" pp_wit tre
   | Alt (_, _, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
