@@ -282,7 +282,7 @@ let rec build
       i, Conv (name, w, conv), re
     | Opt e ->
       let i, w, (id, re) = map_3 mark @@ build e in
-      i, Opt (id,i,w), alt [epsilon ; re]
+      i, Opt (id,i,w), opt re
     | Alt (e1,e2) ->
       let i1, w1, (id1, re1) = map_3 mark @@ build e1 in
       let i2, w2, (id2, re2) = map_3 mark @@ build e2 in
