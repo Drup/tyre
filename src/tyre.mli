@@ -279,16 +279,16 @@ module Internal : sig
   val to_t : 'a raw -> 'a t
 
   type _ wit =
-    | Lit    : string wit
+    | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * int * 'a wit -> 'a option wit
-    | Alt    : Re.markid * int * 'a wit * 'b wit
+    | Opt    : Re.markid * 'a wit -> 'a option wit
+    | Alt    : Re.markid * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : 'a wit * Re.re -> 'a gen wit
+    | Rep   : int * 'a wit * Re.re -> 'a gen wit
 
-  val build : 'a raw -> int * 'a wit * Re.t
-  val extract : original:string -> 'a wit -> int -> Re.substrings -> int * 'a
+  val build : int -> 'a raw -> int * 'a wit * Re.t
+  val extract : original:string -> 'a wit -> Re.substrings -> 'a
 
 end
