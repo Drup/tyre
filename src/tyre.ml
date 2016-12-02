@@ -347,10 +347,6 @@ let rec extract
       (v1, v2)
     | Rep (i,e,re) -> extract_list ~original e re i s
 
-and extract_top
-  : type a . original:string -> a T.wit -> Re.substrings -> a
-  = fun ~original e s -> extract ~original e s
-
 (** We need to re-match the string for lists, in order to extract
     all the elements.
     Re doesn't offer the possibility to keep the results when
@@ -360,7 +356,7 @@ and extract_top
 and extract_list
   : type a. original:string -> a T.wit -> Re.re -> int -> Re.substrings -> a gen
   = fun ~original e re i s ->
-    let aux = extract_top ~original e in
+    let aux = extract ~original e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
     Gen.map aux @@ Re.all_gen ~pos ~len re original
@@ -389,17 +385,15 @@ let rec build_route_aux i rel wl = function
 
 let build_route l = build_route_aux 1 [] [] l
 
-let rec extract_route ~original subs = function
+let rec extract_route ~original wl subs = match wl with
   | [] ->
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
-  | WRoute (id, wit, f) :: l ->
+  | WRoute (id, wit, f) :: wl ->
     if Re.Mark.test subs id then
       f (extract ~original wit subs)
     else
-      extract_route ~original subs l
-
-let extract_route_top ~original l subs = extract_route ~original subs l
+      extract_route ~original wl subs
 
 (** {4 Compilation and execution} *)
 
@@ -430,8 +424,8 @@ let exec ?pos ?len ({ info ; cre } as tcre) original =
   | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
     let f = match info with
-      | One wit -> extract_top ~original wit
-      | Routes wl -> extract_route_top ~original wl
+      | One wit -> extract ~original wit
+      | Routes wl -> extract_route ~original wl
     in
     try
       Result.Ok (f subs)
