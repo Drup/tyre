@@ -38,19 +38,20 @@ val regex : Re.t -> string t
 
 val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
 (** [conv ~name to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
-*)
-
-val conv_fail : name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a t -> 'b t
-(** [conv_fail ~name to_ from_ tyre] is similar to [conv to_ from_ tyre] excepts [to_] is allowed to fail by returning [None] or raising an exception. If it does, {!exec} will return [`ConverterFailure (name, s)] with [s] the substring on which the converter was called.
 
 For example, this is the implementation of {!pos_int}:
 
 {[
 let pos_int =
-  Tyre.conv_fail ~name:"pos_int"
-    (fun x -> Some (int_of_string x)) string_of_int
+  Tyre.conv
+    int_of_string string_of_int
     (Tyre.regex (Re.rep1 Re.digit))
 ]}
+*)
+
+val conv_fail :
+  ('a -> ('b, exn) Result.result) -> ('b -> 'a) -> 'a t -> 'b t
+(** [conv_fail to_ from_ tyre] is similar to [conv to_ from_ tyre] excepts [to_] is allowed to fail by returning [Error] or raising an exception. If it does, {!exec} will return [`ConverterFailure exn] where [exn] is the returned exception.
 
 *)
 
@@ -187,7 +188,7 @@ val compile : 'a t -> 'a re
 
 type 'a error = [
   | `NoMatch of 'a re * string
-  | `ConverterFailure of string * string
+  | `ConverterFailure of exn
 ]
 
 val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.result
@@ -195,7 +196,7 @@ val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.resu
     the compiled tyregex [ctyre] and returns the extracted value.
 
     Returns [Error (`NoMatch (tyre, s)] if [tyre] doesn't match [s].
-    Returns [Error (`ConverterFailure (name, s))] if the converter named [name] failed while trying to convert the substring [s].
+    Returns [Error (`ConverterFailure exn)] if a converter failed with the exception [exn].
 
     @param pos optional beginning of the string (default 0)
     @param len length of the substring of [str] that can be matched (default to the end of the string)
@@ -255,17 +256,17 @@ val pp_re : Format.formatter -> 'a re -> unit
 (** Internal types *)
 module Internal : sig
 
-  exception ConverterFailure of string * string
+  exception ConverterFailure of exn
 
   type ('a, 'b) conv = {
-    to_ : 'a -> 'b option ;
+    to_ : 'a -> 'b ;
     from_ : 'b -> 'a ;
   }
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
+    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
@@ -278,16 +279,16 @@ module Internal : sig
   val to_t : 'a raw -> 'a t
 
   type _ wit =
-    | Regexp : Re.t -> string wit
-    | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * int * 'a wit -> 'a option wit
-    | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
+    | Lit    : int -> string wit
+    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Opt    : Re.markid * 'a wit -> 'a option wit
+    | Alt    : Re.markid * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : 'a wit * Re.re -> 'a gen wit
+    | Rep   : int * 'a wit * Re.re -> 'a gen wit
 
-  val build : 'a raw -> int * 'a wit * Re.t
-  val extract : original:string -> 'a wit -> int -> Re.substrings -> int * 'a
+  val build : int -> 'a raw -> int * 'a wit * Re.t
+  val extract : original:string -> 'a wit -> Re.substrings -> 'a
 
 end

@@ -42,24 +42,23 @@ module Gen = struct
 
 end
 
-let map_snd f (x,y) = (x, f y)
 let map_3 f (x,y,z) = (x, y, f z)
 
 (** {2 The various types} *)
 
 type 'a gen = unit -> 'a option
 
-module Types = struct
+module T = struct
 
   type ('a, 'b) conv = {
-    to_ : 'a -> 'b option ;
+    to_ : 'a -> 'b ;
     from_ : 'b -> 'a ;
   }
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : string * 'a raw * ('a, 'b) conv -> 'b raw
+    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
@@ -69,38 +68,50 @@ module Types = struct
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   type _ wit =
-    | Regexp : Re.t -> string wit
-    | Conv   : string * 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * int * 'a wit -> 'a option wit
-    | Alt    : Re.markid * int * 'a wit * Re.markid * 'b wit
+    | Lit    : int -> string wit
+    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Opt    : Re.markid * 'a wit -> 'a option wit
+    | Alt    : Re.markid * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : 'a wit * Re.re -> 'a gen wit
+    | Rep   : int * 'a wit * Re.re -> 'a gen wit
 
 end
 
-open Types
-
-type 'a t = 'a raw
+type 'a t = 'a T.raw
 
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
 
-let conv_fail ~name to_ from_ x : _ t =
-  let to_ x = try to_ x with _ -> None in
-  Conv (name, x, {to_; from_})
+(* Converters
+
+   The implementation here assume converter failures are rare.
+   This way, we avoid allocating an option and using an exception handler in
+   the non-failing case.
+*)
+exception ConverterFailure of exn
+
+let conv_fail to_ from_ x : _ t =
+  let fail exn =
+    raise (ConverterFailure exn)
+  in
+  let to_ x = match to_ x with
+    | Result.Ok x -> x
+    | Result.Error exn -> fail exn
+    | exception exn -> fail exn
+  in
+  Conv (x, {to_; from_})
 
 let conv to_ from_ x : _ t =
-  let to_ x = Some (to_ x) in
-  Conv ("", x, {to_; from_})
+  Conv (x, {to_; from_})
 
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
-let prefix x a = Prefix (x, a)
-let suffix a x = Suffix (a, x)
+let prefix x a : _ t = Prefix (x, a)
+let suffix a x : _ t = Suffix (a, x)
 let opt a : _ t = Opt a
 
 module Infix = struct
@@ -120,7 +131,7 @@ let rep1 x = x <&> rep x
 (* [modifier] is unsafe in general (for example [modifier Re.group]).
    It shouldn't be exposed to the user.
 *)
-let modifier f re = Mod (f, re)
+let modifier f re : _ t = Mod (f, re)
 
 let word re = modifier Re.word re
 let whole_string re = modifier Re.whole_string re
@@ -151,8 +162,6 @@ module Regex = struct
 
 end
 
-let some f x = Some (f x)
-
 let unit s re =
   conv
     (fun _ -> ())
@@ -171,16 +180,16 @@ let char c =
 let blanks = unit "" (Re.rep Re.blank)
 
 let pos_int =
-  conv_fail "pos_int" (some int_of_string) string_of_int (regex Regex.pos_int)
+  conv int_of_string string_of_int (regex Regex.pos_int)
 
 let int =
-  conv_fail "int" (some int_of_string) string_of_int (regex Regex.int)
+  conv int_of_string string_of_int (regex Regex.int)
 
 let float =
-  conv_fail "float" (some float_of_string) string_of_float (regex Regex.float)
+  conv float_of_string string_of_float (regex Regex.float)
 
 let bool =
-  conv_fail "bool" (some bool_of_string) string_of_bool (regex Regex.bool)
+  conv bool_of_string string_of_bool (regex Regex.bool)
 
 let list e =
   conv Gen.to_list Gen.of_list (rep e)
@@ -205,9 +214,9 @@ let separated_list ~sep e =
 
 let rec witnesspp
   : type a . Format.formatter -> a t -> unit
-  = fun ppf tre -> match tre with
+  = fun ppf tre -> let open T in match tre with
     | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
-    | Conv (_, tre, _) -> witnesspp ppf tre
+    | Conv (tre, _) -> witnesspp ppf tre
     | Opt _ -> ()
     | Alt (tre1, _) -> witnesspp ppf tre1
     | Seq (tre1, tre2) ->
@@ -234,14 +243,14 @@ let rec pprep f ppf gen = match gen () with
 
 let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
-  = fun tre ppf -> match tre with
+  = fun tre ppf -> let open T in match tre with
     | Regexp (_, lazy cre) -> begin function v ->
         if not @@ Re.execp cre v then
           invalid_arg @@
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
         pstr ppf v
       end
-    | Conv (_, tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
+    | Conv (tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
     | Opt p -> begin function
         | None -> pstr ppf ""
         | Some x -> evalpp p ppf x
@@ -275,44 +284,41 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
 *)
 
 let rec build
-  : type a. a t -> int * a wit * Re.t
-  = let open! Re in function
+  : type a. int -> a t -> int * a T.wit * Re.t
+  = let open! Re in let open T in
+  fun i -> function
     | Regexp (re, _) ->
-      1, Regexp re, group @@ no_group re
-    | Conv (name , e, conv) ->
-      let i, w, re = build e in
-      i, Conv (name, w, conv), re
+      (i+1), Lit i, group @@ no_group re
+    | Conv (e, conv) ->
+      let i', w, re = build i e in
+      i', Conv (w, conv), re
     | Opt e ->
-      let i, w, (id, re) = map_3 mark @@ build e in
-      i, Opt (id,i,w), alt [epsilon ; re]
+      let i', w, (id, re) = map_3 mark @@ build i e in
+      i', Opt (id,w), opt re
     | Alt (e1,e2) ->
-      let i1, w1, (id1, re1) = map_3 mark @@ build e1 in
-      let i2, w2, (id2, re2) = map_3 mark @@ build e2 in
-      let grps = i1 + i2 in
-      grps, Alt (id1, i1, w1, id2, w2), alt [re1 ; re2]
+      let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
+      let i'', w2, re2 = build i' e2 in
+      i'', Alt (id1, w1, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
-      let i, w, re = build e in
-      let _, _, re_ign = build e_ign in
-      i, w, seq [no_group re_ign ; re]
+      let i', w, re = build i e in
+      let _, _, re_ign = build 1 e_ign in
+      i', w, seq [no_group re_ign ; re]
     | Suffix (e,e_ign) ->
-      let i, w, re = build e in
-      let _, _, re_ign = build e_ign in
-      i, w, seq [re ; no_group re_ign]
+      let i', w, re = build i e in
+      let _, _, re_ign = build 1 e_ign in
+      i', w, seq [re ; no_group re_ign]
     | Seq (e1,e2) ->
-      let i1, w1, re1 = build e1 in
-      let i2, w2, re2 = build e2 in
-      let grps = i1 + i2 in
-      grps, Seq (w1, w2), seq [re1; re2]
+      let i', w1, re1 = build i e1 in
+      let i'', w2, re2 = build i' e2 in
+      i'', Seq (w1, w2), seq [re1; re2]
     | Rep e ->
-      let _, w, re = build e in
-      1, Rep (w,Re.compile re), group @@ rep @@ no_group re
+      let _, w, re = build 1 e in
+      (i+1), Rep (i,w,Re.compile re), group @@ rep @@ no_group re
     | Mod (f, e) ->
-      let n, w, re = build e in
-      n, w, f re
+      let i', w, re = build i e in
+      i', w, f re
 
 (** {3 Extraction.} *)
-
-exception ConverterFailure of string * string
 
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
@@ -320,35 +326,26 @@ exception ConverterFailure of string * string
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let rec extract
-  : type a. original:string -> a wit -> int -> Re.substrings -> int * a
-  = fun ~original rea i s -> match rea with
-    | Regexp _ -> i+1, Re.get s i
-    | Conv (name, w, conv) ->
-      let i, v = extract ~original w i s in
-      begin match conv.to_ v with
-        | Some v -> (i, v)
-        | None -> raise (ConverterFailure (name, Re.get s i))
-      end
-    | Opt (id,grps,w) ->
-      if not @@ Re.marked s id then i+grps, None
-      else map_snd (fun x -> Some x) @@ extract ~original w i s
-    | Alt (i1,grps,w1,id2,w2) ->
+  : type a. original:string -> a T.wit -> Re.substrings -> a
+  = fun ~original rea s -> let open T in match rea with
+    | Lit i -> Re.get s i
+    | Conv (w, conv) ->
+      let v = extract ~original w s in
+      conv.to_ v
+    | Opt (id,w) ->
+      if not @@ Re.marked s id then None
+      else Some (extract ~original w s)
+    | Alt (i1,w1,w2) ->
       if Re.marked s i1 then
-        map_snd (fun x -> `Left x) @@ extract ~original w1 i s
-      else if Re.marked s id2 then
-        map_snd (fun x -> `Right x) @@ extract ~original w2 (i+grps) s
+        `Left (extract ~original w1 s)
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
-        assert false
+        `Right (extract ~original w2 s)
     | Seq (e1,e2) ->
-      let i, v1 = extract ~original e1 i s in
-      let i, v2 = extract ~original e2 i s in
-      i, (v1, v2)
-    | Rep (e,re) -> i+1, extract_list ~original e re i s
-
-and extract_top
-  : type a . original:string -> a wit -> Re.substrings -> a
-  = fun ~original e s -> snd @@ extract ~original e 1 s
+      let v1 = extract ~original e1 s in
+      let v2 = extract ~original e2 s in
+      (v1, v2)
+    | Rep (i,e,re) -> extract_list ~original e re i s
 
 (** We need to re-match the string for lists, in order to extract
     all the elements.
@@ -357,9 +354,9 @@ and extract_top
     possible as it would be equivalent to counting in an automaton).
 *)
 and extract_list
-  : type a. original:string -> a wit -> Re.re -> int -> Re.substrings -> a gen
+  : type a. original:string -> a T.wit -> Re.re -> int -> Re.substrings -> a gen
   = fun ~original e re i s ->
-    let aux = extract_top ~original e in
+    let aux = extract ~original e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
     Gen.map aux @@ Re.all_gen ~pos ~len re original
@@ -373,43 +370,41 @@ let route re f = Route (re, f)
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.markid * int * 'a wit * ('a -> 'r) -> 'r wit_route
+    WRoute : Re.markid * 'a T.wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
 *)
-let rec build_route_aux rel wl = function
+let rec build_route_aux i rel wl = function
   | [] -> List.rev rel, List.rev wl
   | Route (tre, f) :: l ->
-    let grps, wit, re = build tre in
+    let i', wit, re = build i tre in
     let id, re = Re.mark re in
-    let w = WRoute (id, grps, wit, f) in
-    build_route_aux (re::rel) (w::wl) l
+    let w = WRoute (id, wit, f) in
+    build_route_aux i' (re::rel) (w::wl) l
 
-let build_route l = build_route_aux [] [] l
+let build_route l = build_route_aux 1 [] [] l
 
-let rec extract_route ~original i subs = function
+let rec extract_route ~original wl subs = match wl with
   | [] ->
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
-  | WRoute (id, grps, wit, f) :: l ->
+  | WRoute (id, wit, f) :: wl ->
     if Re.Mark.test subs id then
-      let _, v = extract ~original wit i subs in f v
+      f (extract ~original wit subs)
     else
-      extract_route ~original (i+grps) subs l
-
-let extract_route_top ~original l subs = extract_route ~original 1 subs l
+      extract_route ~original wl subs
 
 (** {4 Compilation and execution} *)
 
 type 'r info =
-  | One of 'r wit
+  | One of 'r T.wit
   | Routes of 'r wit_route list
 
 type 'a re = { info : 'a info ; cre : Re.re }
 
 let compile tre =
-  let _, wit, re = build tre in
+  let _, wit, re = build 1 tre in
   let cre = Re.compile re in
   { info = One wit ; cre }
 
@@ -421,7 +416,7 @@ let route l =
 
 type 'a error = [
   | `NoMatch of 'a re * string
-  | `ConverterFailure of string * string
+  | `ConverterFailure of exn
 ]
 
 let exec ?pos ?len ({ info ; cre } as tcre) original =
@@ -429,13 +424,13 @@ let exec ?pos ?len ({ info ; cre } as tcre) original =
   | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
     let f = match info with
-      | One wit -> extract_top ~original wit
-      | Routes wl -> extract_route_top ~original wl
+      | One wit -> extract ~original wit
+      | Routes wl -> extract_route ~original wl
     in
     try
       Result.Ok (f subs)
-    with ConverterFailure (name, s) ->
-      Result.Error (`ConverterFailure (name, s))
+    with ConverterFailure exn ->
+      Result.Error (`ConverterFailure exn)
 
 let execp ?pos ?len {cre ; _ } original =
   Re.execp ?pos ?len cre original
@@ -455,9 +450,9 @@ let rec pp_list pp ppf = function
 
 let rec pp
   : type a. _ -> a t -> unit
-  = fun ppf -> function
+  = fun ppf -> let open T in function
   | Regexp (re,_) -> sexp ppf "Re" "%a" Re.pp re
-  | Conv (name,tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp tre
+  | Conv (tre,_) -> sexp ppf "Conv" "%a" pp tre
   | Opt tre -> sexp ppf "Opt" "%a" pp tre
   | Alt (tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp tre1 pp tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp tre1 pp tre2
@@ -469,18 +464,18 @@ let rec pp
   | Mod (_,tre) -> sexp ppf "Mod" "%a" pp tre
 
 let rec pp_wit
-  : type a. _ -> a wit -> unit
-  = fun ppf -> function
-  | Regexp re -> sexp ppf "Re" "%a" Re.pp re
-  | Conv (name, tre,_) -> sexp ppf "Conv" "%s@ %a)" name pp_wit tre
-  | Opt (_, _, tre) -> sexp ppf "Opt" "%a" pp_wit tre
-  | Alt (_, _, tre1, _, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
+  : type a. _ -> a T.wit -> unit
+  = fun ppf -> let open T in function
+  | Lit i -> sexp ppf "Lit" "%i" i
+  | Conv (tre,_) -> sexp ppf "Conv" "%a" pp_wit tre
+  | Opt (_, tre) -> sexp ppf "Opt" "%a" pp_wit tre
+  | Alt (_, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
-  | Rep (w, re) -> sexp ppf "Rep" "%a@ %a" pp_wit w Re.pp_re re
+  | Rep (i, w, re) -> sexp ppf "Rep" "%i@ %a@ %a" i pp_wit w Re.pp_re re
 
 let pp_wit_route
   : type a. _ -> a wit_route -> unit
-  = fun ppf (WRoute (_,_,w,_)) -> pp_wit ppf w
+  = fun ppf (WRoute (_,w,_)) -> pp_wit ppf w
 
 let pp_re ppf = function
   | { info = One w; cre } ->
@@ -489,7 +484,7 @@ let pp_re ppf = function
     sexp ppf "Route" "%a@ %a" Re.pp_re cre (pp_list pp_wit_route) wl
 
 module Internal = struct
-  include Types
+  include T
 
   let to_t x = x
   let from_t x = x
