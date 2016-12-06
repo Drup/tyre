@@ -98,8 +98,8 @@ let conv_fail to_ from_ x : _ t =
     raise (ConverterFailure exn)
   in
   let to_ x = match to_ x with
-    | Ok x -> x
-    | Error exn -> fail exn
+    | Result.Ok x -> x
+    | Result.Error exn -> fail exn
     | exception exn -> fail exn
   in
   Conv (x, {to_; from_})
