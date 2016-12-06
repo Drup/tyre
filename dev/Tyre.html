@@ -57,21 +57,21 @@ A typed regular expression.
 </div>
 
 <pre><span id="VALconv"><span class="keyword">val</span> conv</span> : <code class="type">('a -> 'b) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">conv ~name to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.<br>
-</div>
-
-<pre><span id="VALconv_fail"><span class="keyword">val</span> conv_fail</span> : <code class="type">name:string -> ('a -> 'b option) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">conv_fail ~name to_ from_ tyre</code> is similar to <code class="code">conv to_ from_ tyre</code> excepts <code class="code">to_</code> is allowed to fail by returning <code class="code"><span class="constructor">None</span></code> or raising an exception. If it does, <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> will return <code class="code"><span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> (name, s)</code> with <code class="code">s</code> the substring on which the converter was called.
+<code class="code">conv ~name to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.
 <p>
 
 For example, this is the implementation of <a href="Tyre.html#VALpos_int"><code class="code"><span class="constructor">Tyre</span>.pos_int</code></a>:
 <p>
 
 <pre class="codepre"><code class="code"><span class="keyword">let</span>&nbsp;pos_int&nbsp;=
-&nbsp;&nbsp;<span class="constructor">Tyre</span>.conv_fail&nbsp;~name:<span class="string">"pos_int"</span>
-&nbsp;&nbsp;&nbsp;&nbsp;(<span class="keyword">fun</span>&nbsp;x&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Some</span>&nbsp;(int_of_string&nbsp;x))&nbsp;string_of_int
+&nbsp;&nbsp;<span class="constructor">Tyre</span>.conv
+&nbsp;&nbsp;&nbsp;&nbsp;int_of_string&nbsp;string_of_int
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Tyre</span>.regex&nbsp;(<span class="constructor">Re</span>.rep1&nbsp;<span class="constructor">Re</span>.digit))
 </code></pre><br>
+</div>
+
+<pre><span id="VALconv_fail"><span class="keyword">val</span> conv_fail</span> : <code class="type">('a -> ('b, exn) Result.result) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
+<code class="code">conv_fail to_ from_ tyre</code> is similar to <code class="code">conv to_ from_ tyre</code> excepts <code class="code">to_</code> is allowed to fail by returning <code class="code"><span class="constructor">Error</span></code> or raising an exception. If it does, <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> will return <code class="code"><span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> exn</code> where <code class="code">exn</code> is the returned exception.<br>
 </div>
 
 <pre><span id="VALopt"><span class="keyword">val</span> opt</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a option <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
@@ -212,7 +212,7 @@ A compiled typed regular expression.<br>
 <code class="code">compile tyre</code> is the compiled tyregex representing <code class="code">tyre</code>.<br>
 </div>
 
-<pre><span id="TYPEerror"><span class="keyword">type</span> <code class="type">'a</code> error</span> = <code class="type">[ `ConverterFailure of string * string | `NoMatch of 'a <a href="Tyre.html#TYPEre">re</a> * string ]</code> </pre>
+<pre><span id="TYPEerror"><span class="keyword">type</span> <code class="type">'a</code> error</span> = <code class="type">[ `ConverterFailure of exn | `NoMatch of 'a <a href="Tyre.html#TYPEre">re</a> * string ]</code> </pre>
 
 
 <pre><span id="VALexec"><span class="keyword">val</span> exec</span> : <code class="type">?pos:int -><br>       ?len:int -> 'a <a href="Tyre.html#TYPEre">re</a> -> string -> ('a, 'a <a href="Tyre.html#TYPEerror">error</a>) Result.result</code></pre><div class="info ">
@@ -221,7 +221,7 @@ A compiled typed regular expression.<br>
 <p>
 
     Returns <code class="code"><span class="constructor">Error</span> (<span class="keywordsign">`</span><span class="constructor">NoMatch</span> (tyre, s)</code> if <code class="code">tyre</code> doesn't match <code class="code">s</code>.
-    Returns <code class="code"><span class="constructor">Error</span> (<span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> (name, s))</code> if the converter named <code class="code">name</code> failed while trying to convert the substring <code class="code">s</code>.<br>
+    Returns <code class="code"><span class="constructor">Error</span> (<span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> exn)</code> if a converter failed with the exception <code class="code">exn</code>.<br>
 </div>
 <div class="param_info"><code class="code">pos</code> : optional beginning of the string (default 0)</div>
 <div class="param_info"><code class="code">len</code> : length of the substring of <code class="code">str</code> that can be matched (default to the end of the string)</div>
