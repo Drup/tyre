@@ -11,9 +11,12 @@ let tyre_test s =
 
 let re2 = Tyre.compile RFC2616.request
 let tyre_all s =
-  match Tyre.all_gen re2 s with
-  | Result.Ok l -> assert (Gen.length l = 55 * 100)
+  match Tyre.all re2 s with
+  | Result.Ok l -> assert (List.length l = 55 * 100)
   | Result.Error _ -> failwith "oups"
+let tyre_all_gen s =
+  let l = Tyre.all_gen re2 s in
+  assert (Gen.length l = 55 * 100)
 
 let angstrom s =
   match Angstrom.(parse_only (many Angstrom_rFC2616.request)) (`String s) with
@@ -28,6 +31,7 @@ let s = CCIO.read_all oc
 let l = [
   "tyre", tyre ;
   "tyre.all", tyre_all ;
+  "tyre.all_gen", tyre_all_gen ;
   "tyre.test", tyre_test ;
   "angstrom", angstrom ;
 ]
