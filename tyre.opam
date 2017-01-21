@@ -21,6 +21,7 @@ depends: [
   "re" {>= "1.8.0"}
   "alcotest" {test & >= "0.8.0"}
   "result"
-  "seq"
+  "base-metaocaml-ocamlfind"
+  "oseq"
 ]
 available: [ ocaml-version >= "4.02.0" ]

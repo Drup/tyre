@@ -3,7 +3,17 @@
 (executables
  ((names      (dims ini))
   (modules    (Dims Ini))
-  (libraries  (tyre))))
+  (libraries  (tyre))
+  (modes (byte))
+  (link_flags(
+    -I +compiler-libs
+    ocamlcommon.cma 
+    ocamlbytecomp.cma
+    ocamltoplevel.cma
+    metalib.cma 
+    berstart.cmo
+  ))
+))
 
 (alias
  ((name runtest)

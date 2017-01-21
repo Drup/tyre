@@ -42,7 +42,7 @@ val regex : Re.t -> string t
     Groups inside [re] are erased.
 *)
 
-val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
+val conv : ('a -> 'b) code -> ('b -> 'a) code -> 'a t -> 'b t
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
     [to_] is allowed to raise an exception [exn].
@@ -229,13 +229,13 @@ val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
 
 (** {3:routing Routing} *)
 
-type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
+type +'a route = Route : 'x t * ('x -> 'a) code -> 'a route
 (** A route is a pair of a tyregex and a handler.
     When the tyregex is matched, the function is called with the
     result of the matching.
 *)
 
-val (-->) : 'x t -> ('x -> 'a) -> 'a route
+val (-->) : 'x t -> ('x -> 'a) code -> 'a route
 (** [tyre --> f] is [Route (tyre, f)]. *)
 
 val route : 'a route list -> 'a re
@@ -269,40 +269,40 @@ val pp : Format.formatter -> 'a t -> unit
 
 val pp_re : Format.formatter -> 'a re -> unit
 
-(** Internal types *)
-module Internal : sig
-
-  type ('a, 'b) conv = {
-    to_ : 'a -> 'b ;
-    from_ : 'b -> 'a ;
-  }
-
-  type 'a raw =
-    (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
-    | Opt    : 'a raw -> ('a option) raw
-    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
-    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a Seq.t raw
-    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
-
-  val from_t : 'a t -> 'a raw
-  val to_t : 'a raw -> 'a t
-
-  type _ wit =
-    | Lit    : int -> string wit
-    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * 'a wit -> 'a option wit
-    | Alt    : Re.markid * 'a wit * 'b wit
-      -> [`Left of 'a | `Right of 'b] wit
-    | Seq    :
-        'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
-
-  val build : int -> 'a raw -> int * 'a wit * Re.t
-  val extract : original:string -> 'a wit -> Re.substrings -> 'a
-
-end
+(* (\** Internal types *\)
+ * module Internal : sig
+ * 
+ *   type ('a, 'b) conv = {
+ *     to_ : 'a -> 'b ;
+ *     from_ : 'b -> 'a ;
+ *   }
+ * 
+ *   type 'a raw =
+ *     (\* We store a compiled regex to efficiently check string when unparsing. *\)
+ *     | Regexp : Re.t * Re.re Lazy.t -> string raw
+ *     | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
+ *     | Opt    : 'a raw -> ('a option) raw
+ *     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
+ *     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
+ *     | Prefix : 'b raw * 'a raw -> 'a raw
+ *     | Suffix : 'a raw * 'b raw  -> 'a raw
+ *     | Rep    : 'a raw -> 'a Seq.t raw
+ *     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
+ * 
+ *   val from_t : 'a t -> 'a raw
+ *   val to_t : 'a raw -> 'a t
+ * 
+ *   type _ wit =
+ *     | Lit    : int -> string wit
+ *     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+ *     | Opt    : Re.markid * 'a wit -> 'a option wit
+ *     | Alt    : Re.markid * 'a wit * 'b wit
+ *       -> [`Left of 'a | `Right of 'b] wit
+ *     | Seq    :
+ *         'a wit * 'b wit -> ('a * 'b) wit
+ *     | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
+ * 
+ *   val build : int -> 'a raw -> int * 'a wit * Re.t
+ *   val extract : original:string -> 'a wit -> Re.substrings -> 'a
+ * 
+ * end *)

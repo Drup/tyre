@@ -24,9 +24,8 @@ module A = struct
 end
 
 open Tyre
-exception ConvFail
 let cfail : unit t =
-  conv (fun _ -> raise ConvFail) (fun _ -> raise ConvFail) (regex Re.any)
+  conv .< fun _ -> failwith ""  >. .< fun _ -> failwith "" >. (regex Re.any)
 
 let test_fail title desc cre s error b =
   A.(check @@ tyre desc)
@@ -43,12 +42,12 @@ let nomatch title desc re s =
 let convfail title desc re s =
   title, `Quick, fun () ->
   let cre = Tyre.compile re in
-  test_fail title desc cre s (`ConverterFailure ConvFail) true ;
+  test_fail title desc cre s (`ConverterFailure (Failure "")) true ;
   A.(check @@ tyre @@ list desc)
     (title^" all") (Tyre.all cre s)
-    (Result.Error (`ConverterFailure ConvFail)) ;
+    (Result.Error (`ConverterFailure (Failure ""))) ;
   A.check_raises
-    (title^" all_seq") ConvFail (fun () -> ignore @@ Tyre.all_seq cre s ())
+    (title^" all_seq") (Failure "") (fun () -> ignore @@ Tyre.all_seq cre s ())
 
 
 let test title desc cre re v s =
@@ -75,6 +74,7 @@ let topt' title desc re v s s' =
   title, `Quick,
   fun () ->
     let cre = Tyre.compile re in
+    Format.eprintf "%a@." Tyre.pp_re cre ;
     test (title ^" some") (A.option desc) cre re (Some v) s ;
     test_all (title ^"some") (A.option desc) cre re [Some v] s ;
     test (title ^" none") (A.option desc) cre re None s'
@@ -160,12 +160,12 @@ let conv_failure = [
 
 let routes =
   let fixed n = regex Re.(repn any n (Some n)) in
-  let f n x = n, x in
+  let f = .<fun n x -> n, x>. in
   route [
-    (str"foo" *> fixed 3 <* str"xx") --> f 1 ;
-    (str"foo" *> fixed 5) --> f 2 ;
-    (str"bar" *> fixed 5) --> f 3 ;
-    (fixed 2 <* str"blob") --> f 4 ;
+    (str"foo" *> fixed 3 <* str"xx") --> .<.~f 1>. ;
+    (str"foo" *> fixed 5) --> .<.~f 2>. ;
+    (str"bar" *> fixed 5) --> .<.~f 3>. ;
+    (fixed 2 <* str"blob") --> .<.~f 4>. ;
   ]
 
 let troute title s n res =

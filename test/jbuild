@@ -3,7 +3,17 @@
 (executable
  ((name      test)
   (modules   (Test))
-  (libraries (tyre alcotest))))
+  (libraries (tyre alcotest))
+  (modes (byte))
+  (link_flags(
+    -I +compiler-libs
+    ocamlcommon.cma 
+    ocamlbytecomp.cma
+    ocamltoplevel.cma
+    metalib.cma 
+    berstart.cmo
+  ))
+  ))
 
 (alias
  ((name runtest)

@@ -7,7 +7,7 @@ type ini =
   ; anon: (string * string) list }
 
 let take_till cset = Re.(rep (compl [set cset])) |> Tyre.regex
-let strip = Tyre.conv String.trim (fun x -> x)
+let strip = Tyre.conv .<String.trim>. .<(fun x -> x)>.
 
 let section_title =
   let open! Tyre in
@@ -38,14 +38,14 @@ let named_section =
 
 let ini =
   Tyre.start *> section <&> Tyre.list named_section <* Tyre.stop
-  |> Tyre.conv
-    (fun (anon, named) -> { anon ; named })
-    (fun { anon ; named } -> (anon, named))
+  (* |> Tyre.conv
+   *   .<(fun (anon, named) -> { anon ; named })>.
+   *   .<(fun { anon ; named } -> (anon, named))>. *)
 
 let sample_ini =
-  { anon=[ "lang", "OCaml"
+  ([ "lang", "OCaml"
          ; "lib", "foo bar" ]
-  ; named =
+  ,
       [ "lib",
         [ "re", "1.5.0"
         ; "tyre", "> 1.5.0" ]
@@ -55,11 +55,12 @@ let sample_ini =
       ; "lib_test",
         [ "alcotest", "*" ]
       ]
-  }
+  )
 
 let sample_ini_str = Tyre.eval ini sample_ini
-
 let sample_ini' = Tyre.exec (Tyre.compile ini) sample_ini_str
 
 let () =
   assert (Result.Ok sample_ini = sample_ini')
+
+let () = Format.printf "%a@." Tyre.pp_re (Tyre.compile ini)

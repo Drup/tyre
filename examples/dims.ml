@@ -25,11 +25,11 @@ let () =
 
 (* Pairs are fine, but we want pretty types.
    We can use converters to transform the value. *)
-type dim = { x : int ; y : int }
-let nice_dim : dim Tyre.t =
-  Tyre.conv
-    (fun (x,y) -> { x ; y })
-    (fun {x;y} -> (x,y)) (* We provide the backward transformation to unparse *)
+(* type dim = { x : int ; y : int } *)
+let nice_dim : _ Tyre.t =
+  (* Tyre.conv
+   *   (fun (x,y) -> { x ; y })
+   *   (fun {x;y} -> (x,y)) (\* We provide the backward transformation to unparse *\) *)
     dim
 
 (* We can keep composing regular expressions.
@@ -37,14 +37,16 @@ let nice_dim : dim Tyre.t =
 
    The <* and *> operators allow to suffix and prefix with a regex.
 *)
-let list_of_dims : dim list Tyre.t =
+let list_of_dims : _ list Tyre.t =
   let sep = Tyre.( blanks *> char ';' <* blanks )in
   Tyre.( str"dims:" *> terminated_list ~sep nice_dim )
 
-let () =
-  assert (Tyre.eval list_of_dims [{x=2;y=3}; {x=12; y=54}] = "dims:2x3;12x54;")
+(* let () =
+ *   assert (Tyre.eval list_of_dims [{x=2;y=3}; {x=12; y=54}] = "dims:2x3;12x54;") *)
 
 let list_of_dims_re = Tyre.compile list_of_dims
-let () =
-  assert (Tyre.exec list_of_dims_re "dims:12x89 ; 60x10 ; 1x1 ;"
-      = Result.Ok [{x=12;y=89}; {x=60; y=10}; {x=1;y=1}])
+(* let () =
+ *   assert (Tyre.exec list_of_dims_re "dims:12x89 ; 60x10 ; 1x1 ;"
+ *     = Result.Ok [{x=12;y=89}; {x=60; y=10}; {x=1;y=1}]) *)
+
+let () = Format.printf "%a@." Tyre.pp_re list_of_dims_re

@@ -14,54 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-module Seq = struct
-  include Seq
+open Tyre_internal
 
-  let of_list l =
-    let rec aux l () = match l with
-      | [] -> Seq.Nil
-      | x :: tail -> Seq.Cons (x, aux tail)
-    in
-    aux l
-  let to_rev_list gen =
-    fold_left (fun acc x -> x :: acc) [] gen
-  let to_list gen = List.rev (to_rev_list gen)
-end
-
-let map_3 f (x,y,z) = (x, y, f z)
-
-(** {2 The various types} *)
-
-module T = struct
-
-  type ('a, 'b) conv = {
-    to_ : 'a -> 'b ;
-    from_ : 'b -> 'a ;
-  }
-
-  type 'a raw =
-    (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
-    | Opt    : 'a raw -> ('a option) raw
-    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
-    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a Seq.t raw
-    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
-
-  type _ wit =
-    | Lit    : int -> string wit
-    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * 'a wit -> 'a option wit
-    | Alt    : Re.markid * 'a wit * 'b wit
-      -> [`Left of 'a | `Right of 'b] wit
-    | Seq    :
-        'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
-
-end
+let () =
+  Runcode.add_search_path (Findlib.package_directory "re") ;
+  Runcode.add_search_path (Findlib.package_directory "result") ;
+  Runcode.add_search_path (Findlib.package_directory "seq") ;
+  Runcode.add_search_path (Findlib.package_directory "oseq") ;
+  ()
 
 type 'a t = 'a T.raw
 
@@ -135,41 +95,41 @@ end
 
 let unit s re =
   conv
-    (fun _ -> ())
-    (fun () -> s)
+    .<(fun _ -> ())>.
+    .<(fun () -> .~s)>.
     (regex re)
 
-let start = unit "" Re.start
-let stop = unit "" Re.stop
+let start = unit .<"">. Re.start
+let stop = unit .<"">. Re.stop
 
-let str s = unit s (Re.str s)
+let str s = unit .<s>. (Re.str s)
 
 let char c =
-  let s = String.make 1 c in
+  let s = .< String.make 1 c >. in
   unit s (Re.char c)
 
-let blanks = unit "" (Re.rep Re.blank)
+let blanks = unit .<"">. (Re.rep Re.blank)
 
 let pos_int =
-  conv int_of_string string_of_int (regex Regex.pos_int)
+  conv .<int_of_string>. .<string_of_int>. (regex Regex.pos_int)
 
 let int =
-  conv int_of_string string_of_int (regex Regex.int)
+  conv .<int_of_string>. .<string_of_int>. (regex Regex.int)
 
 let float =
-  conv float_of_string string_of_float (regex Regex.float)
+  conv .<float_of_string>. .<string_of_float>. (regex Regex.float)
 
 let bool =
-  conv bool_of_string string_of_bool (regex Regex.bool)
+  conv .<bool_of_string>. .<string_of_bool>. (regex Regex.bool)
 
 let list e =
-  conv Seq.to_list Seq.of_list (rep e)
+  conv .<OSeq.to_list>. .<OSeq.of_list>. (rep e)
 
 let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
   let e = opt (e <&> list (sep *> e)) in
-  let to_ = function None -> [] | Some (h, t) -> (h :: t)
-  and from_ = function [] -> None | h :: t -> Some (h, t)
+  let to_ = .<function None -> [] | Some (h, t) -> (h :: t)>.
+  and from_ = .<function [] -> None | h :: t -> Some (h, t)>.
   in
   conv to_ from_ e
 
@@ -221,7 +181,7 @@ let rec evalpp
           Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
         pstr ppf v
       end
-    | Conv (tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
+    | Conv (tre, conv) -> fun v -> evalpp tre ppf (Runcode.run conv.from_ v)
     | Opt p -> begin function
         | None -> pstr ppf ""
         | Some x -> evalpp p ppf x
@@ -254,6 +214,11 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
     to be able to guess the branch matched.
 *)
 
+let map_mark (x,y,z) =
+  let mark, e = Re.mark z in
+  (x, y, mark, e)
+
+
 let rec build
   : type a. int -> a t -> int * a T.wit * Re.t
   = let open! Re in let open T in
@@ -264,10 +229,10 @@ let rec build
       let i', w, re = build i e in
       i', Conv (w, conv), re
     | Opt e ->
-      let i', w, (id, re) = map_3 mark @@ build i e in
+      let i', w, id, re = map_mark @@ build i e in
       i', Opt (id,w), opt re
     | Alt (e1,e2) ->
-      let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
+      let i', w1, id1, re1 = map_mark @@ build i e1 in
       let i'', w2, re2 = build i' e2 in
       i'', Alt (id1, w1, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
@@ -284,12 +249,14 @@ let rec build
       i'', Seq (w1, w2), seq [re1; re2]
     | Rep e ->
       let _, w, re = build 1 e in
-      (i+1), Rep (i,w,Re.compile re), group @@ rep @@ no_group re
+      (i+1), Rep (i,w, .<Re.compile re>.), group @@ rep @@ no_group re
     | Mod (f, e) ->
       let i', w, re = build i e in
       i', w, f re
 
 (** {3 Extraction.} *)
+
+(* let genlet x = Print_code.code_of_val_code @@ Print_code.genlet x *)
 
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
@@ -297,25 +264,33 @@ let rec build
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let rec extract
-  : type a. original:string -> a T.wit -> Re.substrings -> a
+  : type a. original:(string code) -> a T.wit -> Re.substrings code -> a code
   = fun ~original rea s -> let open T in match rea with
-    | Lit i -> Re.get s i
+    | Lit i ->
+      .< Re.get .~s i >.
     | Conv (w, conv) ->
-      let v = extract ~original w s in
-      conv.to_ v
+      let code = extract ~original w s in
+      .< .~(conv.to_) .~code >.
     | Opt (id,w) ->
-      if not @@ Re.marked s id then None
-      else Some (extract ~original w s)
+      let code = extract ~original w s in
+      .<
+      if Re.marked .~s id
+      then Some .~code
+      else None
+      >.
     | Alt (i1,w1,w2) ->
-      if Re.marked s i1 then
-        `Left (extract ~original w1 s)
-      else
-        (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
-        `Right (extract ~original w2 s)
+      let code1 = extract ~original w1 s in
+      let code2 = extract ~original w2 s in
+      .< if Re.marked .~s i1 then
+          `Left .~code1
+        else
+          (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
+          `Right .~code2
+      >.
     | Seq (e1,e2) ->
-      let v1 = extract ~original e1 s in
-      let v2 = extract ~original e2 s in
-      (v1, v2)
+      let code1 = extract ~original e1 s in
+      let code2 = extract ~original e2 s in
+      .< (.~code1, .~code2) >.
     | Rep (i,e,re) -> extract_list ~original e re i s
 
 (** We need to re-match the string for lists, in order to extract
@@ -325,23 +300,28 @@ let rec extract
     possible as it would be equivalent to counting in an automaton).
 *)
 and extract_list
-  : type a. original:string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t
+  : type a. original:string code -> a T.wit -> Re.re code -> int -> Re.substrings code -> a Seq.t code
   = fun ~original e re i s ->
-    let aux = extract ~original e in
-    let (pos, pos') = Re.get_ofs s i in
-    let len = pos' - pos in
-    Seq.map aux @@ Re.all_seq ~pos ~len re original
+    .<
+      let (pos, pos') = Re.get_ofs .~s i in
+      let len = pos' - pos in
+      let f subs = .~(extract ~original e .<subs>.) in
+      OSeq.map f @@
+      Re.all_seq ~pos ~len
+        .~re
+        .~original
+    >.
 
 (** {4 Multiple match} *)
 
-type +'r route = Route : 'a t * ('a -> 'r) -> 'r route
+type +'r route = Route : 'a t * ('a -> 'r) code -> 'r route
 
 let route re f = Route (re, f)
 
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.markid * 'a T.wit * ('a -> 'r) -> 'r wit_route
+    WRoute : Re.markid * 'a T.wit * ('a -> 'r) code -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -349,22 +329,23 @@ type 'r wit_route =
 let rec build_route_aux i rel wl = function
   | [] -> List.rev rel, List.rev wl
   | Route (tre, f) :: l ->
-    let i', wit, re = build i tre in
-    let id, re = Re.mark re in
+    let i', wit, id, re = map_mark (build i tre) in
     let w = WRoute (id, wit, f) in
-    build_route_aux i' (re::rel) (w::wl) l
+    build_route_aux i' (re :: rel) (w::wl) l
 
 let build_route l = build_route_aux 1 [] [] l
 
 let rec extract_route ~original wl subs = match wl with
   | [] ->
     (* Invariant: At least one of the regexp of the alternative matches. *)
-    assert false
+    .<assert false>.
   | WRoute (id, wit, f) :: wl ->
-    if Re.Mark.test subs id then
-      f (extract ~original wit subs)
-    else
-      extract_route ~original wl subs
+    let code = extract ~original wit subs in
+    let code_rest = extract_route ~original wl subs in
+    .< if Re.Mark.test .~subs id
+      then .~f .~code
+      else .~code_rest
+    >.
 
 (** {4 Compilation and execution} *)
 
@@ -372,48 +353,53 @@ type 'r info =
   | One of 'r T.wit
   | Routes of 'r wit_route list
 
-type 'a re = { info : 'a info ; cre : Re.re }
-
-let compile tre =
-  let _, wit, re = build 1 tre in
-  let cre = Re.compile re in
-  { info = One wit ; cre }
-
-let route l =
-  let rel, wl = build_route l in
-  let cre = Re.compile @@ Re.alt rel in
-  { info = Routes wl ; cre }
-
-
 type 'a error = [
   | `NoMatch of 'a re * string
   | `ConverterFailure of exn
 ]
+and 'a extracter = (string -> Re.Group.t -> 'a) code
+and 'a re = {
+  info : 'a info ;
+  cre : Re.re ;
+  extract : 'a extracter ;
+}
 
-let extract_with_info ~info ~original subs = match info with
-  | One w -> extract ~original w subs
-  | Routes wl -> extract_route ~original wl subs
+let wrap_code f wit =
+  .< fun original subs -> .~(f ~original:.<original>. wit .<subs>.) >.
 
-let exec ?pos ?len ({ info ; cre } as tcre) original =
+let compile tre =
+  let _, wit, re = build 1 tre in
+  let cre = Re.compile re in
+  let extract_code = wrap_code extract wit in    
+  { info = One wit ; cre ; extract = extract_code }
+
+let route l =
+  let rel, wl = build_route l in
+  let cre = Re.compile @@ Re.alt rel in
+  let extract_code = wrap_code extract_route wl in   
+  { info = Routes wl ; cre ; extract = extract_code }
+
+
+
+let exec ?pos ?len ({ cre ; extract ; _ } as tcre) original =
   match Re.exec_opt ?pos ?len cre original with
   | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
-    try
-      Result.Ok (extract_with_info ~info ~original subs)
-    with exn ->
-      Result.Error (`ConverterFailure exn)
+    try Result.Ok (Runcode.run extract original subs)
+    with exn -> Result.Error (`ConverterFailure exn)
+   
 
 let execp ?pos ?len {cre ; _ } original =
   Re.execp ?pos ?len cre original
 
-let all_seq ?pos ?len { info ; cre } original =
+let all_seq ?pos ?len { cre ; extract ; _ } original =
   let seq = Re.all_seq ?pos ?len cre original in
-  let get_res subs = extract_with_info ~info ~original subs in
+  let get_res subs = Runcode.run extract original subs in
   Seq.map get_res seq
 
 let all ?pos ?len tcre original =
   try
-    Result.Ok (Seq.to_list @@ all_seq ?pos ?len tcre original)
+    Result.Ok (OSeq.to_list @@ all_seq ?pos ?len tcre original)
   with exn ->
     Result.Error (`ConverterFailure exn)
 
@@ -453,17 +439,17 @@ let rec pp_wit
   | Opt (_, tre) -> sexp ppf "Opt" "%a" pp_wit tre
   | Alt (_, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
-  | Rep (i, w, re) -> sexp ppf "Rep" "%i@ %a@ %a" i pp_wit w Re.pp_re re
+  | Rep (i, w, _re) -> sexp ppf "Rep" "%i@ %a" i pp_wit w (* Re.pp_re re *)
 
 let pp_wit_route
   : type a. _ -> a wit_route -> unit
   = fun ppf (WRoute (_,w,_)) -> pp_wit ppf w
 
 let pp_re ppf = function
-  | { info = One w; cre } ->
-    sexp ppf "One" "%a@ %a" Re.pp_re cre pp_wit w
-  | { info = Routes wl; cre } ->
-    sexp ppf "Route" "%a@ %a" Re.pp_re cre (pp_list pp_wit_route) wl
+  | { info = One w; cre ; extract } ->
+    sexp ppf "One" "%a@ %a (%a)" Re.pp_re cre pp_wit w Print_code.print_code extract
+  | { info = Routes wl; cre ; extract } ->
+    sexp ppf "Route" "%a@ %a (%a)" Re.pp_re cre (pp_list pp_wit_route) wl Print_code.print_code extract
 
 let pp_error ppf : _ error -> unit = function
   | `NoMatch (re, s) ->
@@ -471,12 +457,10 @@ let pp_error ppf : _ error -> unit = function
   | `ConverterFailure exn ->
     Format.pp_print_string ppf @@ Printexc.to_string exn
 
-module Internal = struct
-  include T
-
-  let to_t x = x
-  let from_t x = x
-
-  let build = build
-  let extract = extract
-end
+(* module Internal = struct *)
+(*   include T *)
+(*   let to_t x = x *)
+(*   let from_t x = x *)
+(*   let build = build *)
+(*   let extract = extract *)
+(* end *)
