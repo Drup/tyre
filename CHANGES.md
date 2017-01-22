@@ -4,9 +4,7 @@
 
 * Performance improvements.
 * Fix the behavior of opt (Prefer eating input).
-* Improve/Fix conv_fail:
-  * Use result.
-  * Converter failure returns the raised exception.
+* Remove conv_fail and allow usual converters to fail with an exception.
 
 ## 0.2 (08 October 2016)
 * Rename `<?>` to `<|>`
