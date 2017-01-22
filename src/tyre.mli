@@ -37,7 +37,7 @@ val regex : Re.t -> string t
 *)
 
 val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
-(** [conv ~name to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
+(** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
 For example, this is the implementation of {!pos_int}:
 
