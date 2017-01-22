@@ -57,7 +57,7 @@ A typed regular expression.
 </div>
 
 <pre><span id="VALconv"><span class="keyword">val</span> conv</span> : <code class="type">('a -> 'b) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">conv ~name to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.
+<code class="code">conv to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.
 <p>
 
 For example, this is the implementation of <a href="Tyre.html#VALpos_int"><code class="code"><span class="constructor">Tyre</span>.pos_int</code></a>:
