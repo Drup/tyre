@@ -107,7 +107,7 @@ A generator <code class="code">g</code> will return a new value each time it's c
 </div>
 
 <pre><span id="VALprefix"><span class="keyword">val</span> prefix</span> : <code class="type">'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">prefix tyre_i tyre</code> matches <code class="code">tyre_i</code>, ignores the result, and then matches <code class="code">tyre</code> and returns its result.<br>
+<code class="code">prefix tyre_i tyre</code> matches <code class="code">tyre_i</code>, ignores the result, and then matches <code class="code">tyre</code> and returns its result. Converters in <code class="code">tyre_i</code> are never called.<br>
 </div>
 
 <pre><span id="VALsuffix"><span class="keyword">val</span> suffix</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a> -> 'a <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
@@ -214,6 +214,7 @@ A compiled typed regular expression.<br>
 <pre><span id="TYPEerror"><span class="keyword">type</span> <code class="type">'a</code> error</span> = <code class="type">[ `ConverterFailure of exn | `NoMatch of 'a <a href="Tyre.html#TYPEre">re</a> * string ]</code> </pre>
 
 
+<pre><span id="VALpp_error"><span class="keyword">val</span> pp_error</span> : <code class="type">Format.formatter -> 'a <a href="Tyre.html#TYPEerror">error</a> -> unit</code></pre>
 <pre><span id="VALexec"><span class="keyword">val</span> exec</span> : <code class="type">?pos:int -><br>       ?len:int -> 'a <a href="Tyre.html#TYPEre">re</a> -> string -> ('a, 'a <a href="Tyre.html#TYPEerror">error</a>) Result.result</code></pre><div class="info ">
 <code class="code">exec ctyre s</code> matches the string <code class="code">s</code> using
     the compiled tyregex <code class="code">ctyre</code> and returns the extracted value.
@@ -226,7 +227,8 @@ A compiled typed regular expression.<br>
 <div class="param_info"><code class="code">len</code> : length of the substring of <code class="code">str</code> that can be matched (default to the end of the string)</div>
 
 <pre><span id="VALexecp"><span class="keyword">val</span> execp</span> : <code class="type">?pos:int -> ?len:int -> 'a <a href="Tyre.html#TYPEre">re</a> -> string -> bool</code></pre><div class="info ">
-<code class="code">execp ctyre s</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">ctyre</code> matches <code class="code">s</code>.<br>
+<code class="code">execp ctyre s</code> returns <code class="code"><span class="keyword">true</span></code> if <code class="code">ctyre</code> matches <code class="code">s</code>. Converters
+    are never called.<br>
 <b>Since</b> 0.1.1<br>
 </div>
 <div class="param_info"><code class="code">pos</code> : optional beginning of the string (default 0)</div>
