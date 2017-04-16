@@ -39,6 +39,9 @@ val regex : Re.t -> string t
 val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
+    [to_] is allowed to raise an exception [exn].
+    In this case, {!exec} will return [`ConverterFailure exn].
+
 For example, this is the implementation of {!pos_int}:
 
 {[
@@ -47,12 +50,6 @@ let pos_int =
     int_of_string string_of_int
     (Tyre.regex (Re.rep1 Re.digit))
 ]}
-*)
-
-val conv_fail :
-  ('a -> ('b, exn) Result.result) -> ('b -> 'a) -> 'a t -> 'b t
-(** [conv_fail to_ from_ tyre] is similar to [conv to_ from_ tyre] excepts [to_] is allowed to fail by returning [Error] or raising an exception. If it does, {!exec} will return [`ConverterFailure exn] where [exn] is the returned exception.
-
 *)
 
 val opt : 'a t -> 'a option t
@@ -255,8 +252,6 @@ val pp_re : Format.formatter -> 'a re -> unit
 
 (** Internal types *)
 module Internal : sig
-
-  exception ConverterFailure of exn
 
   type ('a, 'b) conv = {
     to_ : 'a -> 'b ;

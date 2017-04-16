@@ -87,23 +87,8 @@ let regex x : _ t =
 
 (* Converters
 
-   The implementation here assume converter failures are rare.
-   This way, we avoid allocating an option and using an exception handler in
-   the non-failing case.
+   The exception matching of converters is handled by {!Tyre.exec} directly.
 *)
-exception ConverterFailure of exn
-
-let conv_fail to_ from_ x : _ t =
-  let fail exn =
-    raise (ConverterFailure exn)
-  in
-  let to_ x = match to_ x with
-    | Result.Ok x -> x
-    | Result.Error exn -> fail exn
-    | exception exn -> fail exn
-  in
-  Conv (x, {to_; from_})
-
 let conv to_ from_ x : _ t =
   Conv (x, {to_; from_})
 
@@ -429,7 +414,7 @@ let exec ?pos ?len ({ info ; cre } as tcre) original =
     in
     try
       Result.Ok (f subs)
-    with ConverterFailure exn ->
+    with exn ->
       Result.Error (`ConverterFailure exn)
 
 let execp ?pos ?len {cre ; _ } original =
@@ -488,8 +473,6 @@ module Internal = struct
 
   let to_t x = x
   let from_t x = x
-
-  exception ConverterFailure = ConverterFailure
 
   let build = build
   let extract = extract
