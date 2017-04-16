@@ -6,7 +6,6 @@
 <link rel="Start" href="index.html">
 <link rel="Up" href="index.html">
 <link title="Index of types" rel=Appendix href="index_types.html">
-<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
 <link title="Index of values" rel=Appendix href="index_values.html">
 <link title="Index of modules" rel=Appendix href="index_modules.html">
 <link title="Tyre" rel="Chapter" href="Tyre.html"><link title="Combinators" rel="Section" href="#2_Combinators">
@@ -60,6 +59,10 @@ A typed regular expression.
 <code class="code">conv to_ from_ tyre</code> matches the same text as <code class="code">tyre</code>, but converts back and forth to a different data type.
 <p>
 
+    <code class="code">to_</code> is allowed to raise an exception <code class="code">exn</code>.
+    In this case, <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> will return <code class="code"><span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> exn</code>.
+<p>
+
 For example, this is the implementation of <a href="Tyre.html#VALpos_int"><code class="code"><span class="constructor">Tyre</span>.pos_int</code></a>:
 <p>
 
@@ -68,10 +71,6 @@ For example, this is the implementation of <a href="Tyre.html#VALpos_int"><code 
 &nbsp;&nbsp;&nbsp;&nbsp;int_of_string&nbsp;string_of_int
 &nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Tyre</span>.regex&nbsp;(<span class="constructor">Re</span>.rep1&nbsp;<span class="constructor">Re</span>.digit))
 </code></pre><br>
-</div>
-
-<pre><span id="VALconv_fail"><span class="keyword">val</span> conv_fail</span> : <code class="type">('a -> ('b, exn) Result.result) -> ('b -> 'a) -> 'a <a href="Tyre.html#TYPEt">t</a> -> 'b <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
-<code class="code">conv_fail to_ from_ tyre</code> is similar to <code class="code">conv to_ from_ tyre</code> excepts <code class="code">to_</code> is allowed to fail by returning <code class="code"><span class="constructor">Error</span></code> or raising an exception. If it does, <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> will return <code class="code"><span class="keywordsign">`</span><span class="constructor">ConverterFailure</span> exn</code> where <code class="code">exn</code> is the returned exception.<br>
 </div>
 
 <pre><span id="VALopt"><span class="keyword">val</span> opt</span> : <code class="type">'a <a href="Tyre.html#TYPEt">t</a> -> 'a option <a href="Tyre.html#TYPEt">t</a></code></pre><div class="info ">
