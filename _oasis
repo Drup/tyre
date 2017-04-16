@@ -41,7 +41,6 @@ Executable test
 Test test
   Command: $test
   TestTools: test
-  WorkingDirectory: _build
 
 Executable example_dim
   Build$: flag(tests)
