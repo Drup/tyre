@@ -17,13 +17,38 @@ module A = struct
       | `Right x, `Right y -> M2.equal x y
       | _ -> false
   end)
+
+  let equal_error x1 x2 = match x1, x2 with
+    | `NoMatch _, `NoMatch _ -> true
+    | `ConverterFailure exn, `ConverterFailure exn' -> exn = exn'
+    | _ -> false
+  let tyre desc = result desc @@ testable Tyre.pp_error equal_error
 end
 
 open Tyre
+exception ConvFail
+let cfail : unit t =
+  conv (fun _ -> raise ConvFail) (fun _ -> raise ConvFail) (regex Re.any)
+
+let test_fail title desc cre s error b =
+  A.(check @@ tyre desc)
+    (title^" exec") (Tyre.exec cre s) (Result.Error error) ;
+  A.(check bool) (title^" execp") (Tyre.execp cre s) b
+
+let nomatch title desc re s =
+  title, `Quick, fun () ->
+  let cre = Tyre.compile re in
+  test_fail title desc cre s (`NoMatch (cre, s)) false
+
+let convfail title desc re s =
+  title, `Quick, fun () ->
+  let cre = Tyre.compile re in
+  test_fail title desc cre s (`ConverterFailure ConvFail) true
+
 
 let test title desc re v s =
   let cre = Tyre.compile re in
-  A.(check (result desc reject))
+  A.(check @@ tyre desc)
     (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
   A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
@@ -92,6 +117,22 @@ let composed = [
     [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
 ]
 
+let nomatch = [
+  nomatch "int" A.int int "a" ;
+  nomatch "bool" A.bool bool "" ;
+  nomatch "string" A.unit (str "foo") "fo";
+  nomatch "2char" A.(pair string string) (regex Re.any <&> regex Re.any) "x" ;
+  nomatch "anchored" A.unit (whole_string @@ char 'x') "xx" ;
+]
+
+let conv_failure = [
+  convfail "char" A.unit cfail "x";
+  convfail "alt" A.(choice unit int) (cfail <|> int) "x" ;
+  t "alt2" A.(choice int unit) (int <|> cfail) (`Left 2) "2" ;
+  convfail "prefix" A.unit (str "foo" *> cfail) "fooy" ;
+  t "prefix2" A.unit (cfail *> str "foo") () "\000foo" ;
+]
+
 let routes =
   let fixed n = regex Re.(repn any n (Some n)) in
   let f n x = n, x in
@@ -122,4 +163,6 @@ let () = Alcotest.run "tyre" [
     "prefix suffix", prefix_suffix ;
     "composed", composed ;
     "routes", route_test ;
+    "nomatch", nomatch ;
+    "convfail", conv_failure ;
   ]

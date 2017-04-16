@@ -468,6 +468,12 @@ let pp_re ppf = function
   | { info = Routes wl; cre } ->
     sexp ppf "Route" "%a@ %a" Re.pp_re cre (pp_list pp_wit_route) wl
 
+let pp_error ppf : _ error -> unit = function
+  | `NoMatch (re, s) ->
+    Format.fprintf ppf "`NoMatch (%a, %s)" pp_re re s
+  | `ConverterFailure exn ->
+    Format.pp_print_string ppf @@ Printexc.to_string exn
+
 module Internal = struct
   include T
 

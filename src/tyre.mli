@@ -79,7 +79,7 @@ val seq : 'a t -> 'b t -> ('a * 'b) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
 
 val prefix : _ t -> 'a t -> 'a t
-(** [prefix tyre_i tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result.
+(** [prefix tyre_i tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result. Converters in [tyre_i] are never called.
 *)
 
 val suffix : 'a t -> _ t -> 'a t
@@ -188,6 +188,8 @@ type 'a error = [
   | `ConverterFailure of exn
 ]
 
+val pp_error : Format.formatter -> _ error -> unit
+
 val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.result
 (** [exec ctyre s] matches the string [s] using
     the compiled tyregex [ctyre] and returns the extracted value.
@@ -200,7 +202,8 @@ val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.resu
 *)
 
 val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
-(** [execp ctyre s] returns [true] if [ctyre] matches [s].
+(** [execp ctyre s] returns [true] if [ctyre] matches [s]. Converters
+    are never called.
 
     @param pos optional beginning of the string (default 0)
     @param len length of the substring of [str] that can be matched (default to the end of the string)
