@@ -38,23 +38,37 @@ let test_fail title desc cre s error b =
 let nomatch title desc re s =
   title, `Quick, fun () ->
   let cre = Tyre.compile re in
-  test_fail title desc cre s (`NoMatch (cre, s)) false
+  test_fail title desc cre s (`NoMatch (cre, s)) false ;
+  A.(check @@ tyre @@ list desc)
+    (title^" all") (Tyre.all cre s) (Result.Ok [])
 
 let convfail title desc re s =
   title, `Quick, fun () ->
   let cre = Tyre.compile re in
-  test_fail title desc cre s (`ConverterFailure ConvFail) true
+  test_fail title desc cre s (`ConverterFailure ConvFail) true ;
+  A.(check @@ tyre @@ list desc)
+    (title^" all") (Tyre.all cre s)
+    (Result.Error (`ConverterFailure ConvFail)) ;
+  A.check_raises
+    (title^" all_gen") ConvFail (fun () -> ignore @@ Tyre.all_gen cre s ())
 
 
-let test title desc re v s =
-  let cre = Tyre.compile re in
+let test title desc cre re v s =
   A.(check @@ tyre desc)
     (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
   A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
+let test_all title desc cre re l s =
+  A.(check @@ tyre @@ list desc)
+    (title^" all") (Tyre.all cre s) (Result.Ok l) ;
+  A.(check string) (title^" eval all") s (Tyre.eval (list re) l)
+
 let t' title desc re v s =
-  title, `Quick, fun () -> test title desc re v s
+  title, `Quick, fun () ->
+    let cre = Tyre.compile re in
+    test title desc cre re v s ;
+    test_all title desc cre re [v] s
 
 let t title desc re v s =
   t' title desc (Tyre.whole_string re) v s
@@ -62,8 +76,10 @@ let t title desc re v s =
 let topt' title desc re v s s' =
   title, `Quick,
   fun () ->
-    test (title ^" some") (A.option desc) re (Some v) s ;
-    test (title ^" none") (A.option desc) re None s'
+    let cre = Tyre.compile re in
+    test (title ^" some") (A.option desc) cre re (Some v) s ;
+    test_all (title ^"some") (A.option desc) cre re [Some v] s ;
+    test (title ^" none") (A.option desc) cre re None s'
 
 let topt title desc re v s s' =
   topt' title desc (Tyre.whole_string re) v s s'
