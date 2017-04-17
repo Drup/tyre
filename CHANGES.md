@@ -5,6 +5,7 @@
 * Performance improvements.
 * Fix the behavior of opt (Prefer eating input).
 * Remove conv_fail and allow usual converters to fail with an exception.
+* Add Tyre.all and Tyre.all_gen
 
 ## 0.2 (08 October 2016)
 * Rename `<?>` to `<|>`

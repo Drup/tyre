@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d506c29aafdaa0dfb1f52d76db18cd68)
+# DO NOT EDIT (digest: 1c7fe14fb67000d75670b5957ed2ce7f)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -38,6 +38,21 @@ true: annot, bin_annot
 <examples/*.ml{,i,y}>: package(re)
 <examples/*.ml{,i,y}>: package(result)
 <examples/*.ml{,i,y}>: use_tyre
+# Executable benchmark_angstrom
+<benchmark/benchmark_angstrom.{native,byte}>: package(angstrom)
+<benchmark/benchmark_angstrom.{native,byte}>: package(benchmark)
+<benchmark/benchmark_angstrom.{native,byte}>: package(containers)
+<benchmark/benchmark_angstrom.{native,byte}>: package(gen)
+<benchmark/benchmark_angstrom.{native,byte}>: package(re)
+<benchmark/benchmark_angstrom.{native,byte}>: package(result)
+<benchmark/benchmark_angstrom.{native,byte}>: use_tyre
+<benchmark/*.ml{,i,y}>: package(angstrom)
+<benchmark/*.ml{,i,y}>: package(benchmark)
+<benchmark/*.ml{,i,y}>: package(containers)
+<benchmark/*.ml{,i,y}>: package(gen)
+<benchmark/*.ml{,i,y}>: package(re)
+<benchmark/*.ml{,i,y}>: package(result)
+<benchmark/*.ml{,i,y}>: use_tyre
 # OASIS_STOP
 
 <src/*>|<test/*>: warn(+A-6-40-42)
@@ -48,3 +63,5 @@ true: bin_annot
 
 # Better locations and loc in .mlis
 true: keep_locs
+
+true: optimize(3)
