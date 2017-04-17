@@ -1,6 +1,6 @@
 # OASIS_START
-# DO NOT EDIT (digest: d330c125f14f2eb78badda837098ac7a)
-version = "0.2"
+# DO NOT EDIT (digest: 6a220843c124834f7d3574cd5dcf4d9d)
+version = "0.3"
 description = "Typed Regular Expressions"
 requires = "re result"
 archive(byte) = "tyre.cma"
