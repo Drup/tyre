@@ -11,11 +11,11 @@ matrix:
   include:
   - os: linux
     env: OCAML_VERSION=4.02
-  - os: osx
-    env: OCAML_VERSION=4.03
   - os: linux
     env: OCAML_VERSION=4.03
   - os: linux
     env: OCAML_VERSION=4.04 DOC=true
   - os: linux
     env: OCAML_VERSION=4.05
+  - os: osx
+    env: OCAML_VERSION=latest
