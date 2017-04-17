@@ -1,6 +1,6 @@
 # Change Log
 
-## Unreleased
+## 0.3 (17 April 2017)
 
 * Performance improvements.
 * Fix the behavior of opt (Prefer eating input).
