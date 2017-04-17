@@ -17,6 +17,7 @@
 <link title="Infix operators" rel="Subsection" href="#3_Infixoperators">
 <link title="Useful combinators" rel="Subsection" href="#3_Usefulcombinators">
 <link title="Other combinators" rel="Subsection" href="#3_Othercombinators">
+<link title="Repeated Matching" rel="Subsection" href="#repeat">
 <link title="Routing" rel="Subsection" href="#routing">
 <title>Tyre</title>
 </head>
@@ -233,6 +234,20 @@ A compiled typed regular expression.<br>
 </div>
 <div class="param_info"><code class="code">pos</code> : optional beginning of the string (default 0)</div>
 <div class="param_info"><code class="code">len</code> : length of the substring of <code class="code">str</code> that can be matched (default to the end of the string)</div>
+<br>
+<h3 id="repeat">Repeated Matching</h3><br>
+
+<pre><span id="VALall"><span class="keyword">val</span> all</span> : <code class="type">?pos:int -><br>       ?len:int -> 'a <a href="Tyre.html#TYPEre">re</a> -> string -> ('a list, 'a <a href="Tyre.html#TYPEerror">error</a>) Result.result</code></pre><div class="info ">
+<code class="code">all ctyre s</code> calls to <a href="Tyre.html#VALexec"><code class="code"><span class="constructor">Tyre</span>.exec</code></a> repeatedly and returns the list of all the matches.<br>
+</div>
+
+<pre><span id="VALall_gen"><span class="keyword">val</span> all_gen</span> : <code class="type">?pos:int -> ?len:int -> 'a <a href="Tyre.html#TYPEre">re</a> -> string -> 'a <a href="Tyre.html#TYPEgen">gen</a></code></pre><div class="info ">
+<code class="code">all_gen ctyre s</code> is <code class="code">all ctyre s</code> but returns a <a href="Tyre.html#TYPEgen"><code class="code"><span class="constructor">Tyre</span>.gen</code></a> instead. Matches
+    are enumerated lazily.
+<p>
+
+    Exceptions raised by converters are not caught.<br>
+</div>
 <br>
 <h3 id="routing">Routing</h3><br>
 
