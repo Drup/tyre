@@ -1,0 +1,38 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="next" href="Tyre.Internal.html">
+<link rel="Up" href="Tyre.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Tyre" rel="Chapter" href="Tyre.html"><title>Tyre.Infix</title>
+</head>
+<body>
+<div class="navbar">&nbsp;<a class="up" href="Tyre.html" title="Tyre">Up</a>
+&nbsp;<a class="post" href="Tyre.Internal.html" title="Tyre.Internal">Next</a>
+</div>
+<h1>Module <a href="type_Tyre.Infix.html">Tyre.Infix</a></h1>
+
+<pre><span class="keyword">module</span> Infix: <code class="code"><span class="keyword">sig</span></code> <a href="Tyre.Infix.html">..</a> <code class="code"><span class="keyword">end</span></code></pre><hr width="100%">
+
+<pre><span id="VAL(<|>)"><span class="keyword">val</span> (&lt;|&gt;)</span> : <code class="type">'a <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'b <a href="Tyre.html#TYPEt">Tyre.t</a> -> [ `Left of 'a | `Right of 'b ] <a href="Tyre.html#TYPEt">Tyre.t</a></code></pre><div class="info ">
+<code class="code">t&nbsp;&lt;|&gt;&nbsp;t'</code> is <code class="code">alt&nbsp;t&nbsp;t'</code>.<br>
+</div>
+
+<pre><span id="VAL(<&>)"><span class="keyword">val</span> (&lt;&amp;&gt;)</span> : <code class="type">'a <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'b <a href="Tyre.html#TYPEt">Tyre.t</a> -> ('a * 'b) <a href="Tyre.html#TYPEt">Tyre.t</a></code></pre><div class="info ">
+<code class="code">t&nbsp;&lt;&amp;&gt;&nbsp;t'</code> is <code class="code">seq&nbsp;t&nbsp;t'</code>.<br>
+</div>
+
+<pre><span id="VAL( *> )"><span class="keyword">val</span> ( *&gt; )</span> : <code class="type">'b <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'a <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'a <a href="Tyre.html#TYPEt">Tyre.t</a></code></pre><div class="info ">
+<code class="code">&nbsp;ti&nbsp;*&gt;&nbsp;t&nbsp;</code> is <code class="code">prefix&nbsp;ti&nbsp;t</code>.<br>
+</div>
+
+<pre><span id="VAL( <* )"><span class="keyword">val</span> ( &lt;* )</span> : <code class="type">'a <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'b <a href="Tyre.html#TYPEt">Tyre.t</a> -> 'a <a href="Tyre.html#TYPEt">Tyre.t</a></code></pre><div class="info ">
+<code class="code">&nbsp;t&nbsp;&lt;*&nbsp;ti&nbsp;</code> is <code class="code">suffix&nbsp;t&nbsp;ti</code>.<br>
+</div>
+</body></html>
