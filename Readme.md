@@ -17,7 +17,7 @@ A primitive HTTP parser can be found in the [benchmark/](benchmark/) directory.
 [doc]: https://drup.github.io/tyre/dev/Tyre.html
 
 ```ocaml
-# let dim = Tyre.( "dim:" *> int <*> "x" *> int ) ;;
+# let dim = Tyre.( str"dim:" *> int <&> str"x" *> int ) ;;
 val dim : (int * int) Tyre.t
 
 # let dim_re = Tyre.compile dim ;;
