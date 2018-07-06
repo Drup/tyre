@@ -31,13 +31,15 @@ end
 (** {2 The various types} *)
 
 module type IDX = sig
+  type re
+  type group
   type t
   val with_mark :
-    (int -> 'b -> 'c * 'd * Re.t) -> int -> 'b -> 'c * 'd * t * Re.t
-  val test : Re.Group.t -> t -> bool
+    (int -> 'b -> 'c * 'd * re) -> int -> 'b -> 'c * 'd * t * re
+  val test : group -> t -> bool
 end
 
-module MarkIdx : IDX = struct
+module MarkIdx : IDX with type re := Re.t and type group := Re.Group.t = struct
   type t = Re.Mark.t
   let with_mark f i re =
     let i, w, re = f i re in
@@ -45,7 +47,7 @@ module MarkIdx : IDX = struct
     i, w, idx, re
   let test = Re.Mark.test
 end
-module GroupIdx : IDX = struct
+module GroupIdx : IDX with type re := Re.t and type group := Re.Group.t = struct
   type t = int
   let with_mark f i re =
     let i', w, re = f (i+1) re in
@@ -54,7 +56,45 @@ module GroupIdx : IDX = struct
   let test = Re.Group.test
 end
 
-module Idx = MarkIdx
+module type S = sig
+
+  type t
+  val pp : Format.formatter -> t -> unit
+
+  val whole_string : t -> t
+  val no_group : t -> t
+  val group : t -> t
+  val seq : t list -> t
+  val alt : t list -> t
+  val opt : t -> t
+  val rep : t -> t
+  
+  (** Compilation *)
+  type re
+  val pp_re : Format.formatter -> re -> unit
+  val compile : t -> re
+
+  (** Witness *)
+  type string
+  val pp_string : Format.formatter -> string -> unit
+  val witness : t -> string
+
+  (** Matching *)
+  module Group : sig
+    type t
+    val get : t -> int -> string
+    val offset : t -> int -> int * int
+  end
+
+  val exec : ?pos:int -> ?len:int -> re -> string -> Group.t option
+  val all : ?pos:int -> ?len:int -> re -> string -> Group.t Seq.t
+  val test : ?pos:int -> ?len:int -> re -> string -> bool
+end
+
+module Make
+    (Re : S)
+    (Idx : IDX with type re := Re.t and type group := Re.Group.t)
+= struct
 
 module T = struct
 
@@ -65,7 +105,7 @@ module T = struct
 
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
+    | Regexp : Re.t * Re.re Lazy.t -> Re.string raw
     | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
     | Opt    : 'a raw -> ('a option) raw
     | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
@@ -76,7 +116,7 @@ module T = struct
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   type _ wit =
-    | Lit    : int -> string wit
+    | Lit    : int -> Re.string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
     | Opt    : Idx.t * 'a wit -> 'a option wit
     | Alt    : Idx.t * 'a wit * Idx.t * 'b wit
@@ -92,8 +132,6 @@ type 'a t = 'a T.raw
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
-
-let pcre s = regex @@ Re.Pcre.re s
 
 (* Converters
 
@@ -128,63 +166,11 @@ let rep1 x = x <&> rep x
 *)
 let modifier f re : _ t = Mod (f, re)
 
-let word re = modifier Re.word re
-let whole_string re = modifier Re.whole_string re
-let longest re = modifier Re.longest re
-let shortest re = modifier Re.shortest re
-let first re = modifier Re.first re
-let greedy re = modifier Re.greedy re
-let non_greedy re = modifier Re.non_greedy re
-let nest re = modifier Re.nest re
-
-module Regex = struct
-  open! Re
-
-  (** [0-9]+ *)
-  let pos_int = rep1 digit
-
-  (** -?[0-9]+ *)
-  let int =
-    seq [opt (char '-') ; pos_int]
-
-  (** -?[0-9]+( .[0-9]* )? *)
-  let float =
-    seq [opt (char '-') ; rep1 digit ; opt (seq [char '.'; rep digit])]
-
-  (** true|false *)
-  let bool =
-    alt [str "true" ; str "false"]
-
-end
-
 let unit s re =
   conv
     (fun _ -> ())
     (fun () -> s)
     (regex re)
-
-let start = unit "" Re.start
-let stop = unit "" Re.stop
-
-let str s = unit s (Re.str s)
-
-let char c =
-  let s = String.make 1 c in
-  unit s (Re.char c)
-
-let blanks = unit "" (Re.rep Re.blank)
-
-let pos_int =
-  conv int_of_string string_of_int (regex Regex.pos_int)
-
-let int =
-  conv int_of_string string_of_int (regex Regex.int)
-
-let float =
-  conv float_of_string string_of_float (regex Regex.float)
-
-let bool =
-  conv bool_of_string string_of_bool (regex Regex.bool)
 
 let list e =
   conv Seq.to_list Seq.of_list (rep e)
@@ -210,7 +196,7 @@ let separated_list ~sep e =
 let rec witnesspp
   : type a . Format.formatter -> a t -> unit
   = fun ppf tre -> let open T in match tre with
-    | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
+    | Regexp (re, _) -> Re.pp_string ppf @@ Re.witness re
     | Conv (tre, _) -> witnesspp ppf tre
     | Opt _ -> ()
     | Alt (tre1, _) -> witnesspp ppf tre1
@@ -231,7 +217,7 @@ let rec witnesspp
 
 (** Evaluation is the act of filling the holes. *)
 
-let pstr = Format.pp_print_string
+let pstr = Re.pp_string
 let rec pprep f ppf seq = match seq () with
   | Seq.Nil -> ()
   | Cons (x, seq) -> f ppf x ; pprep f ppf seq
@@ -240,14 +226,15 @@ let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
   = fun tre ppf -> let open T in match tre with
     | Regexp (_, lazy cre) -> begin function v ->
-        if not @@ Re.execp cre v then
+        if not @@ Re.test cre v then
           invalid_arg @@
-          Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
+          Format.asprintf "Tyre.eval: regexp not respected by \"%a\"."
+            Re.pp_string v ;
         pstr ppf v
       end
     | Conv (tre, conv) -> fun v -> evalpp tre ppf (conv.from_ v)
     | Opt p -> begin function
-        | None -> pstr ppf ""
+        | None -> ()
         | Some x -> evalpp p ppf x
       end
     | Seq (tre1,tre2) -> fun (x1, x2) ->
@@ -321,7 +308,7 @@ let rec build
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let[@specialize] rec extract
-  : type a. original:string -> a T.wit -> Re.Group.t -> a
+  : type a. original:Re.string -> a T.wit -> Re.Group.t -> a
   = fun ~original rea s -> let open T in match rea with
     | Lit i -> Re.Group.get s i
     | Conv (w, conv) ->
@@ -352,12 +339,12 @@ let[@specialize] rec extract
     possible as it would be equivalent to counting in an automaton).
 *)
 and[@specialize] extract_list
-  : type a. original:string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t
+  : type a. original:Re.string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t
   = fun ~original e re i s ->
     let aux = extract ~original e in
     let (pos, pos') = Re.Group.offset s i in
     let len = pos' - pos in
-    Seq.map aux @@ Re.Seq.all ~pos ~len re original
+    Seq.map aux @@ Re.all ~pos ~len re original
 
 (** {4 Multiple match} *)
 
@@ -368,7 +355,7 @@ let route re f = Route (re, f)
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.Mark.t * 'a T.wit * ('a -> 'r) -> 'r wit_route
+    WRoute : Idx.t * 'a T.wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -376,8 +363,7 @@ type 'r wit_route =
 let rec build_route_aux i rel wl = function
   | [] -> List.rev rel, List.rev wl
   | Route (tre, f) :: l ->
-    let i', wit, re = build i tre in
-    let id, re = Re.mark re in
+    let i', wit, id, re = Idx.with_mark build i tre in
     let w = WRoute (id, wit, f) in
     build_route_aux i' (re::rel) (w::wl) l
 
@@ -388,7 +374,7 @@ let rec extract_route ~original wl subs = match wl with
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
   | WRoute (id, wit, f) :: wl ->
-    if Re.Mark.test subs id then
+    if Idx.test subs id then
       f (extract ~original wit subs)
     else
       extract_route ~original wl subs
@@ -422,7 +408,7 @@ let extract_with_info ~info ~original subs = match info with
   | Routes wl -> extract_route ~original wl subs
 
 let[@inline] exec ?pos ?len ({ info ; cre } as tcre) original =
-  match Re.exec_opt ?pos ?len cre original with
+  match Re.exec ?pos ?len cre original with
   | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
     try
@@ -431,10 +417,10 @@ let[@inline] exec ?pos ?len ({ info ; cre } as tcre) original =
       Result.Error (`ConverterFailure exn)
 
 let execp ?pos ?len {cre ; _ } original =
-  Re.execp ?pos ?len cre original
+  Re.test ?pos ?len cre original
 
 let all_seq ?pos ?len { info ; cre } original =
-  let seq = Re.Seq.all ?pos ?len cre original in
+  let seq = Re.all ?pos ?len cre original in
   let get_res subs = extract_with_info ~info ~original subs in
   Seq.map get_res seq
 
@@ -508,3 +494,70 @@ module Internal = struct
   let build = build
   let extract = extract
 end
+
+end
+
+include Make(struct
+    include Re
+
+    type string = String.t
+    let pp_string = Format.pp_print_string
+
+    let exec = exec_opt
+    let all = Seq.all
+    let test = execp
+  end)(MarkIdx)
+
+let pcre s = regex @@ Re.Pcre.re s
+
+let word re = modifier Re.word re
+let whole_string re = modifier Re.whole_string re
+let longest re = modifier Re.longest re
+let shortest re = modifier Re.shortest re
+let first re = modifier Re.first re
+let greedy re = modifier Re.greedy re
+let non_greedy re = modifier Re.non_greedy re
+let nest re = modifier Re.nest re
+
+module Regex = struct
+  open! Re
+
+  (** [0-9]+ *)
+  let pos_int = rep1 digit
+
+  (** -?[0-9]+ *)
+  let int =
+    seq [opt (char '-') ; pos_int]
+
+  (** -?[0-9]+( .[0-9]* )? *)
+  let float =
+    seq [opt (char '-') ; rep1 digit ; opt (seq [char '.'; rep digit])]
+
+  (** true|false *)
+  let bool =
+    alt [str "true" ; str "false"]
+
+end
+
+let start = unit "" Re.start
+let stop = unit "" Re.stop
+
+let str s = unit s (Re.str s)
+
+let char c =
+  let s = String.make 1 c in
+  unit s (Re.char c)
+
+let blanks = unit "" (Re.rep Re.blank)
+
+let pos_int =
+  conv int_of_string string_of_int (regex Regex.pos_int)
+
+let int =
+  conv int_of_string string_of_int (regex Regex.int)
+
+let float =
+  conv float_of_string string_of_float (regex Regex.float)
+
+let bool =
+  conv bool_of_string string_of_bool (regex Regex.bool)
