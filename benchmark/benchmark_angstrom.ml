@@ -19,7 +19,7 @@ let tyre_all_gen s =
   assert (Gen.length l = 55 * 100)
 
 let angstrom s =
-  match Angstrom.(parse_only (many Angstrom_rFC2616.request)) (`String s) with
+  match Angstrom.(parse_string (many Angstrom_rFC2616.request)) s with
   | Result.Ok l -> assert (List.length l = 55 * 100)
   | Result.Error _ -> failwith "oups"
 

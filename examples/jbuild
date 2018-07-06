@@ -1,0 +1,18 @@
+(jbuild_version 1)
+
+(executables
+ ((names      (dims ini))
+  (modules    (Dims Ini))
+  (libraries  (tyre))))
+
+(alias
+ ((name runtest)
+  (deps (dims.exe))
+  (action (run ${exe:dims.exe}))
+))
+
+(alias
+ ((name runtest)
+  (deps (ini.exe))
+  (action (run ${exe:ini.exe}))
+))

@@ -1,12 +1,9 @@
 _build
 *.byte
 *.native
-setup.data
-setup.exe
-setup.log
-_tests
-*.docdir
 .gh-pages
 perf.*
+.merlin
+*.install
 
 benchmark/data/http-requests.txt.*
