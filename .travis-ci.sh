@@ -7,8 +7,15 @@ set -e
 set +x
 set -o errexit -o nounset
 
+if [ -z "${DOC+x}" ]; then
+  echo "This is not a push Travis-ci build, doing nothing..."
+  exit 0
+else
+  echo "Building docs..."
+fi
+
 eval `opam config env`
-./configure --enable-docs
+opam install -y odoc
 make doc
 
 if [ -z "$TRAVIS" \
@@ -31,7 +38,7 @@ git clone https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG} $DOCDIR 2>&1 | sed 
 git -C $DOCDIR checkout gh-pages || git -C $DOCDIR checkout --orphan gh-pages
 
 rm -rf $DOCDIR/dev/*
-cp _build/*.docdir/* $DOCDIR/dev
+cp -r _build/default/_doc/_html/tyre/Tyre/* $DOCDIR/dev
 
 git -C $DOCDIR config user.email "travis@travis-ci.org"
 git -C $DOCDIR config user.name "Travis"
