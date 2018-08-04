@@ -14,37 +14,21 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-(** Copied from gen.ml *)
-module Gen = struct
+module Seq = struct
+  include Seq
 
-  let map f gen =
-    let stop = ref false in
-    fun () ->
-      if !stop then None
-      else match gen() with
-        | None -> stop:= true; None
-        | Some x -> Some (f x)
-
-  (* Copied from gen.ml *)
   let of_list l =
-    let l = ref l in
-    fun () ->
-      match !l with
-      | [] -> None
-      | x::l' -> l := l'; Some x
-  let rec fold f acc gen =
-    match gen () with
-    | None -> acc
-    | Some x -> fold f (f acc x) gen
+    let rec aux l () = match l with
+      | [] -> Seq.Nil
+      | x :: tail -> Seq.Cons (x, aux tail)
+    in
+    aux l
   let to_rev_list gen =
-    fold (fun acc x -> x :: acc) [] gen
+    fold_left (fun acc x -> x :: acc) [] gen
   let to_list gen = List.rev (to_rev_list gen)
-
 end
 
 (** {2 The various types} *)
-
-type 'a gen = unit -> 'a option
 
 module T = struct
 
@@ -62,7 +46,7 @@ module T = struct
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
     | Prefix : 'b raw * 'a raw -> 'a raw
     | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a gen raw
+    | Rep    : 'a raw -> 'a Seq.t raw
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   type _ wit =
@@ -73,7 +57,7 @@ module T = struct
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : int * 'a wit * Re.re -> 'a gen wit
+    | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
 
 end
 
@@ -175,7 +159,7 @@ let bool =
   conv bool_of_string string_of_bool (regex Regex.bool)
 
 let list e =
-  conv Gen.to_list Gen.of_list (rep e)
+  conv Seq.to_list Seq.of_list (rep e)
 
 let terminated_list ~sep e = list (e <* sep)
 let separated_list ~sep e =
@@ -220,9 +204,9 @@ let rec witnesspp
 (** Evaluation is the act of filling the holes. *)
 
 let pstr = Format.pp_print_string
-let rec pprep f ppf gen = match gen () with
-  | None -> ()
-  | Some x -> f ppf x ; pprep f ppf gen
+let rec pprep f ppf seq = match seq () with
+  | Seq.Nil -> ()
+  | Cons (x, seq) -> f ppf x ; pprep f ppf seq
 
 let rec evalpp
   : type a . a t -> Format.formatter -> a -> unit
@@ -338,12 +322,12 @@ let rec extract
     possible as it would be equivalent to counting in an automaton).
 *)
 and extract_list
-  : type a. original:string -> a T.wit -> Re.re -> int -> Re.substrings -> a gen
+  : type a. original:string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t
   = fun ~original e re i s ->
     let aux = extract ~original e in
     let (pos, pos') = Re.get_ofs s i in
     let len = pos' - pos in
-    Gen.map aux @@ Re.all_gen ~pos ~len re original
+    Seq.map aux @@ Re.all_seq ~pos ~len re original
 
 (** {4 Multiple match} *)
 
@@ -419,14 +403,14 @@ let exec ?pos ?len ({ info ; cre } as tcre) original =
 let execp ?pos ?len {cre ; _ } original =
   Re.execp ?pos ?len cre original
 
-let all_gen ?pos ?len { info ; cre } original =
-  let gen = Re.all_gen ?pos ?len cre original in
+let all_seq ?pos ?len { info ; cre } original =
+  let seq = Re.all_seq ?pos ?len cre original in
   let get_res subs = extract_with_info ~info ~original subs in
-  Gen.map get_res gen
+  Seq.map get_res seq
 
 let all ?pos ?len tcre original =
   try
-    Result.Ok (Gen.to_list @@ all_gen ?pos ?len tcre original)
+    Result.Ok (Seq.to_list @@ all_seq ?pos ?len tcre original)
   with exn ->
     Result.Error (`ConverterFailure exn)
 
