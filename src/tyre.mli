@@ -67,16 +67,13 @@ val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 
 (** {3 Repetitions} *)
 
-type 'a gen = unit -> 'a option
-(** A generator [g] will return a new value each time it's called, until it returns [None]. See {{:https://github.com/c-cube/gen/}gen}. *)
-
-val rep : 'a t -> 'a gen t
+val rep : 'a t -> 'a Seq.t t
 (** [rep tyre] matches [tyre] zero or more times. Similar to {!Re.rep}.
 
     For {{!matching}matching}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
 *)
 
-val rep1 : 'a t -> ('a * 'a gen) t
+val rep1 : 'a t -> ('a * 'a Seq.t) t
 (** [rep1 tyre] is [seq tyre (rep tyre)]. Similar to {!Re.rep1}. *)
 
 (** {3 Sequences} *)
@@ -223,8 +220,8 @@ val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
 val all : ?pos:int -> ?len:int -> 'a re -> string -> ('a list, 'a error) Result.result
 (** [all ctyre s] calls to {!exec} repeatedly and returns the list of all the matches. *)
 
-val all_gen : ?pos:int -> ?len:int -> 'a re -> string -> 'a gen
-(** [all_gen ctyre s] is [all ctyre s] but returns a {!gen} instead. Matches
+val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
+(** [all_seq ctyre s] is [all ctyre s] but returns a {!gen} instead. Matches
     are enumerated lazily.
 
     Exceptions raised by converters are not caught.
@@ -289,7 +286,7 @@ module Internal : sig
     | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
     | Prefix : 'b raw * 'a raw -> 'a raw
     | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a gen raw
+    | Rep    : 'a raw -> 'a Seq.t raw
     | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
 
   val from_t : 'a t -> 'a raw
@@ -303,7 +300,7 @@ module Internal : sig
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : int * 'a wit * Re.re -> 'a gen wit
+    | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
 
   val build : int -> 'a raw -> int * 'a wit * Re.t
   val extract : original:string -> 'a wit -> Re.substrings -> 'a

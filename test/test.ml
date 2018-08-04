@@ -48,7 +48,7 @@ let convfail title desc re s =
     (title^" all") (Tyre.all cre s)
     (Result.Error (`ConverterFailure ConvFail)) ;
   A.check_raises
-    (title^" all_gen") ConvFail (fun () -> ignore @@ Tyre.all_gen cre s ())
+    (title^" all_seq") ConvFail (fun () -> ignore @@ Tyre.all_seq cre s ())
 
 
 let test title desc cre re v s =
