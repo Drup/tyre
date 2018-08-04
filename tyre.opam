@@ -11,24 +11,16 @@ dev-repo: "https://github.com/Drup/tyre.git"
 tags: [ "regex" ]
 
 build: [
-  ["ocaml" "setup.ml" "-configure" "--prefix" prefix]
-  ["ocaml" "setup.ml" "-build"]
+  ["jbuilder" "subst"]{pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["jbuilder" "runtest" "-p" name] {with-test}
 ]
-build-test: [
-  ["ocaml" "setup.ml" "-configure" "--prefix" prefix "--enable-tests"]
-  ["ocaml" "setup.ml" "-build"]
-  ["ocaml" "setup.ml" "-test"]
-]
-build-doc: ["ocaml" "setup.ml" "-doc"]
 
-install: ["ocaml" "setup.ml" "-install"]
-
-remove: ["ocamlfind" "remove" "tyre"]
 
 depends: [
-  "ocamlfind" {build}
+  "jbuilder" {build}
   "re" {>= "1.7.0"}
-  "alcotest" {test & >= "0.6.0"}
+  "alcotest" {test & >= "0.8.0"}
   "result"
 ]
 available: [ ocaml-version >= "4.02.0" ]

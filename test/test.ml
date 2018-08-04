@@ -1,5 +1,3 @@
-[@@@ocaml.warning "-44"]
-
 module A = struct
   include Alcotest
   let choice
@@ -89,10 +87,10 @@ let basics = [
   t "int pos" A.int pos_int 549085 "549085" ;
   t "int neg" A.int int (-54) "-54" ;
 
-  t "float int" A.float float 3. "3." ;
+  t "float int" (A.float epsilon_float) float 3. "3." ;
   (* t "float_int2" A.float float 3. "3" ; *)
-  t "float" A.float float 4.2 "4.2" ;
-  t "float neg" A.float float (-4.2) "-4.2" ;
+  t "float" (A.float epsilon_float) float 4.2 "4.2" ;
+  t "float neg" (A.float epsilon_float) float (-4.2) "-4.2" ;
 
   t "bool true" A.bool bool true "true" ;
   t "bool false" A.bool bool false "false" ;
@@ -103,7 +101,7 @@ let basics = [
 
 let notwhole = [
   topt' "int option" A.int (opt int) 3 "3" "" ;
-  t' "separated list" A.(list int) (separated_list (char ',') int) [4;4;4] "4,4,4" ;
+  t' "separated list" A.(list int) (separated_list ~sep:(char ',') int) [4;4;4] "4,4,4" ;
 ]
 
 let prefix_suffix = [

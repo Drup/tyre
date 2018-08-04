@@ -29,3 +29,14 @@ val dim_re : (int * int) Tyre.re
 # Tyre.eval dim (2, 5) ;;
 - : string = "dim:2x5"
 ```
+
+## Benchmark 
+
+Some benchmarks are available under the [benchmark/](benchmark/) directory. 
+The benchmark compares the parsing of HTTP requests using angstrom and various
+tyre methods.
+You can run them with:
+```
+./benchmark/data/replicate benchmark/data/http-requests.txt 100
+jbuilder exec benchmark/benchmark_angstrom.exe -- -a
+```
