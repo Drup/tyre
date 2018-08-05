@@ -31,6 +31,12 @@ type 'a t
 
 (** {2 Combinators} *)
 
+val pcre : string -> string t
+(** [pcre s] is a tyregex that matches the PCRE [s] and return the 
+    corresponding string.
+    Groups in [s] are ignored.
+*)
+
 val regex : Re.t -> string t
 (** [regex re] is a tyregex that matches [re] and return the corresponding string.
     Groups inside [re] are erased.

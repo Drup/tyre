@@ -83,6 +83,8 @@ let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
   Regexp (x, re)
 
+let pcre s = regex @@ Re.Pcre.re s
+
 (* Converters
 
    The exception matching of converters is handled by {!Tyre.exec} directly.
