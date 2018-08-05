@@ -19,7 +19,7 @@
     Typed regular expressions.
 *)
 
-type 'a t
+type ('re, 'a) t
 (** A typed regular expression.
 
     The type variable is the type of the returned value when the typed regular expression (tyregex) is executed. tyregexs are bi-directional and can be used both for {{!matching}matching} and {{!eval}evaluation}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
@@ -31,12 +31,12 @@ type 'a t
 
 (** {2 Combinators} *)
 
-val regex : Re.t -> string t
+val regex : Re.t -> (Re.t, string) t
 (** [regex re] is a tyregex that matches [re] and return the corresponding string.
     Groups inside [re] are erased.
 *)
 
-val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
+val conv : ('a -> 'b) -> ('b -> 'a) -> ('re, 'a) t -> ('re, 'b) t
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
     [to_] is allowed to raise an exception [exn].
@@ -52,131 +52,131 @@ let pos_int =
 ]}
 *)
 
-val opt : 'a t -> 'a option t
+val opt : ('re, 'a) t -> ('re, 'a option) t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
 
-val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+val alt : ('re, 'a) t -> ('re, 'b) t -> ('re, [`Left of 'a | `Right of 'b]) t
 (** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
 *)
 
 (** {3 Repetitions} *)
 
-val rep : 'a t -> 'a Seq.t t
+val rep : ('re, 'a) t -> ('re, 'a Seq.t) t
 (** [rep tyre] matches [tyre] zero or more times. Similar to {!Re.rep}.
 
     For {{!matching}matching}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
 *)
 
-val rep1 : 'a t -> ('a * 'a Seq.t) t
+val rep1 : ('re, 'a) t -> ('re, 'a * 'a Seq.t) t
 (** [rep1 tyre] is [seq tyre (rep tyre)]. Similar to {!Re.rep1}. *)
 
 (** {3 Sequences} *)
 
-val seq : 'a t -> 'b t -> ('a * 'b) t
+val seq : ('re, 'a) t -> ('re, 'b) t -> ('re, 'a * 'b) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
 
-val prefix : _ t -> 'a t -> 'a t
+val prefix : ('re, _) t -> ('re, 'a) t -> ('re, 'a) t
 (** [prefix tyre_i tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result. Converters in [tyre_i] are never called.
 *)
 
-val suffix : 'a t -> _ t -> 'a t
+val suffix : ('re, 'a) t -> ('re, _) t -> ('re, 'a) t
 (** Same as [prefix], but reversed. *)
 
 
 
 (** {3 Infix operators} *)
 
-val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+val (<|>) : ('re, 'a) t -> ('re, 'b) t -> ('re, [`Left of 'a | `Right of 'b]) t
 (** [t <|> t'] is [alt t t']. *)
 
-val (<&>) : 'a t -> 'b t -> ('a * 'b) t
+val (<&>) : ('re, 'a) t -> ('re, 'b) t -> ('re, 'a * 'b) t
 (** [t <&> t'] is [seq t t']. *)
 
-val ( *>) : _ t -> 'a t -> 'a t
+val ( *>) : ('re, _) t -> ('re, 'a) t -> ('re, 'a) t
 (** [ ti *> t ] is [prefix ti t]. *)
 
-val (<* ) : 'a t -> _ t -> 'a t
+val (<* ) : ('re, 'a) t -> ('re, _) t -> ('re, 'a) t
 (** [ t <* ti ] is [suffix t ti]. *)
 
 module Infix : sig
 
-  val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+  val (<|>) : ('re, 'a) t -> ('re, 'b) t -> ('re, [`Left of 'a | `Right of 'b]) t
   (** [t <|> t'] is [alt t t']. *)
 
-  val (<&>) : 'a t -> 'b t -> ('a * 'b) t
+  val (<&>) : ('re, 'a) t -> ('re, 'b) t -> ('re, 'a * 'b) t
   (** [t <&> t'] is [seq t t']. *)
 
-  val ( *>) : _ t -> 'a t -> 'a t
+  val ( *>) : ('re, _) t -> ('re, 'a) t -> ('re, 'a) t
   (** [ ti *> t ] is [prefix ti t]. *)
 
-  val (<* ) : 'a t -> _ t -> 'a t
+  val (<* ) : ('re, 'a) t -> ('re, _) t -> ('re, 'a) t
   (** [ t <* ti ] is [suffix t ti]. *)
 
 end
 
 (** {3 Useful combinators} *)
 
-val str : string -> unit t
+val str : string -> (Re.t, unit) t
 (** [str s] matches [s] and evaluates to [s]. *)
 
-val char : char -> unit t
+val char : char -> (Re.t, unit) t
 (** [char c] matches [c] and evaluates to [c]. *)
 
-val blanks : unit t
+val blanks : (Re.t, unit) t
 (** [blanks] matches [Re.(rep blank)] and doesn't return anything. *)
 
-val int : int t
+val int : (Re.t, int) t
 (** [int] matches [-?[0-9]+] and returns the matched integer.
 
     Integers that do not fit in an [int] will fail.
 *)
 
-val pos_int : int t
+val pos_int : (Re.t, int) t
 (** [pos_int] matches [[0-9]+] and returns the matched positive integer.
 
     Integers that do not fit in an [int] will fail.
 *)
 
-val float : float t
+val float : (Re.t, float) t
 (** [float] matches [-?[0-9]+( .[0-9]* )?] and returns the matched floating point number.
 
     Floating point numbers that do not fit in a [float] returns {!infinity} or {!neg_infinity}.
 *)
 
-val bool : bool t
+val bool : (Re.t, bool) t
 (** [bool] matches [true|false] and returns the matched boolean. *)
 
-val list : 'a t -> 'a list t
+val list : ('re, 'a) t -> ('re, 'a list) t
 (** [list e] is similar to [rep e], but returns a list. *)
 
-val terminated_list : sep:_ t -> 'a t -> 'a list t
+val terminated_list : sep:('re, _) t -> ('re, 'a) t -> ('re, 'a list) t
 (** [terminated_list ~sep tyre] is [ list (tyre <* sep) ]. *)
 
-val separated_list : sep:_ t -> 'a t -> 'a list t
+val separated_list : sep:('re, _) t -> ('re, 'a) t -> ('re, 'a list) t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <&> list (sep *> e))]. *)
 
 (** {3 Other combinators}
 
     See {!Re} for details on the semantics of those combinators. *)
 
-val start : unit t
-val stop : unit t
+val start : (Re.t, unit) t
+val stop : (Re.t, unit) t
 
-val word : 'a t -> 'a t
-val whole_string : 'a t -> 'a t
-val longest : 'a t -> 'a t
-val shortest : 'a t -> 'a t
-val first : 'a t -> 'a t
-val greedy : 'a t -> 'a t
-val non_greedy : 'a t -> 'a t
-val nest : 'a t -> 'a t
+val word : (Re.t, 'a) t -> (Re.t, 'a) t
+val whole_string : (Re.t, 'a) t -> (Re.t, 'a) t
+val longest : (Re.t, 'a) t -> (Re.t, 'a) t
+val shortest : (Re.t, 'a) t -> (Re.t, 'a) t
+val first : (Re.t, 'a) t -> (Re.t, 'a) t
+val greedy : (Re.t, 'a) t -> (Re.t, 'a) t
+val non_greedy : (Re.t, 'a) t -> (Re.t, 'a) t
+val nest : (Re.t, 'a) t -> (Re.t, 'a) t
 
 (** {2:matching Matching} *)
 
 type 'a re
 (** A compiled typed regular expression. *)
 
-val compile : 'a t -> 'a re
+val compile : (Re.t, 'a) t -> 'a re
 (** [compile tyre] is the compiled tyregex representing [tyre].
 *)
 
@@ -223,16 +223,16 @@ val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
 
 (** {3:routing Routing} *)
 
-type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
+type ('re, +'a) route = Route : ('re, 'x) t * ('x -> 'a) -> ('re, 'a) route
 (** A route is a pair of a tyregex and a handler.
     When the tyregex is matched, the function is called with the
     result of the matching.
 *)
 
-val (-->) : 'x t -> ('x -> 'a) -> 'a route
+val (-->) : ('re, 'x) t -> ('x -> 'a) -> ('re, 'a) route
 (** [tyre --> f] is [Route (tyre, f)]. *)
 
-val route : 'a route list -> 'a re
+val route : (Re.t, 'a) route list -> 'a re
 (** [route [ tyre1 --> f1 ; tyre2 --> f2 ]] produces a compiled
     tyregex such that, if [tyre1] matches, [f1] is called, and so on.
 
@@ -242,12 +242,12 @@ val route : 'a route list -> 'a re
 
 (** {2:eval Evaluating} *)
 
-val eval : 'a t -> 'a -> string
+val eval : (Re.t, 'a) t -> 'a -> string
 (** [eval tyre v] returns a string [s] such that [exec (compile tyre) s = v].
 
     Note that such string [s] is not unique. [eval] will usually returns a very simple witness. *)
 
-val evalpp : 'a t -> Format.formatter -> 'a -> unit
+val evalpp : (Re.t, 'a) t -> Format.formatter -> 'a -> unit
 (** [evalpp tyre ppf v] is equivalent to [Format.fprintf ppf "%s" (eval tyre v)], but more efficient.
 
     Is is generally used with ["%a"]:
@@ -259,7 +259,7 @@ Format.printf "%a@." my_pp v
 
 (** {2:pp Pretty printing} *)
 
-val pp : Format.formatter -> 'a t -> unit
+val pp : Format.formatter -> (Re.t, 'a) t -> unit
 
 val pp_re : Format.formatter -> 'a re -> unit
 
@@ -271,20 +271,21 @@ module Internal : sig
     from_ : 'b -> 'a ;
   }
 
-  type 'a raw =
+  type ('re, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
-    | Opt    : 'a raw -> ('a option) raw
-    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
-    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a Seq.t raw
-    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
+    | Regexp : 're * Re.re Lazy.t -> ('re, string) raw
+    | Conv   : ('re, 'a) raw * ('a, 'b) conv -> ('re, 'b) raw
+    | Opt    : ('re, 'a) raw -> ('re, 'a option) raw
+    | Alt    : ('re, 'a) raw * ('re, 'b) raw ->
+      ('re, [`Left of 'a | `Right of 'b]) raw
+    | Seq    : ('re, 'a) raw * ('re, 'b) raw -> ('re, 'a * 'b) raw
+    | Prefix : ('re, 'b) raw * ('re, 'a) raw -> ('re, 'a) raw
+    | Suffix : ('re, 'a) raw * ('re, 'b) raw  -> ('re, 'a) raw
+    | Rep    : ('re, 'a) raw -> ('re, 'a Seq.t) raw
+    | Mod    : ('re -> 're) * ('re, 'a) raw -> ('re, 'a) raw
 
-  val from_t : 'a t -> 'a raw
-  val to_t : 'a raw -> 'a t
+  val from_t : ('re, 'a) t -> ('re, 'a) raw
+  val to_t : ('re, 'a) raw -> ('re, 'a) t
 
   type _ wit =
     | Lit    : int -> string wit
@@ -296,7 +297,7 @@ module Internal : sig
         'a wit * 'b wit -> ('a * 'b) wit
     | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
 
-  val build : int -> 'a raw -> int * 'a wit * Re.t
+  val build : int -> (Re.t, 'a) raw -> int * 'a wit * Re.t
   val extract : original:string -> 'a wit -> Re.substrings -> 'a
 
 end

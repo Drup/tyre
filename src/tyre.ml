@@ -37,17 +37,18 @@ module T = struct
     from_ : 'b -> 'a ;
   }
 
-  type 'a raw =
+  type ('re, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
-    | Opt    : 'a raw -> ('a option) raw
-    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
-    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a Seq.t raw
-    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
+    | Regexp : 're * Re.re Lazy.t -> ('re, string) raw
+    | Conv   : ('re, 'a) raw * ('a, 'b) conv -> ('re, 'b) raw
+    | Opt    : ('re, 'a) raw -> ('re, 'a option) raw
+    | Alt    : ('re, 'a) raw * ('re, 'b) raw ->
+      ('re, [`Left of 'a | `Right of 'b]) raw
+    | Seq    : ('re, 'a) raw * ('re, 'b) raw -> ('re, 'a * 'b) raw
+    | Prefix : ('re, 'b) raw * ('re, 'a) raw -> ('re, 'a) raw
+    | Suffix : ('re, 'a) raw * ('re, 'b) raw  -> ('re, 'a) raw
+    | Rep    : ('re, 'a) raw -> ('re, 'a Seq.t) raw
+    | Mod    : ('re -> 're) * ('re, 'a) raw -> ('re, 'a) raw
 
   type _ wit =
     | Lit    : int -> string wit
@@ -61,7 +62,7 @@ module T = struct
 
 end
 
-type 'a t = 'a T.raw
+type ('re, 'a) t = ('re, 'a) T.raw
 
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
@@ -180,7 +181,7 @@ let separated_list ~sep e =
 *)
 
 let rec witnesspp
-  : type a . Format.formatter -> a t -> unit
+  : type a . Format.formatter -> (_, a) t -> unit
   = fun ppf tre -> let open T in match tre with
     | Regexp (re, _) -> Format.pp_print_string ppf @@ Re.witness re
     | Conv (tre, _) -> witnesspp ppf tre
@@ -209,7 +210,7 @@ let rec pprep f ppf seq = match seq () with
   | Cons (x, seq) -> f ppf x ; pprep f ppf seq
 
 let rec evalpp
-  : type a . a t -> Format.formatter -> a -> unit
+  : type a . (_, a) t -> Format.formatter -> a -> unit
   = fun tre ppf -> let open T in match tre with
     | Regexp (_, lazy cre) -> begin function v ->
         if not @@ Re.execp cre v then
@@ -248,7 +249,7 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
 *)
 
 let rec build
-  : type a. int -> a t -> int * a T.wit * Re.t
+  : type a. int -> (_, a) t -> int * a T.wit * _
   = let open! Re in let open T in
   fun i -> function
     | Regexp (re, _) ->
@@ -331,7 +332,7 @@ and extract_list
 
 (** {4 Multiple match} *)
 
-type +'r route = Route : 'a t * ('a -> 'r) -> 'r route
+type (_, +'r) route = Route : ('re, 'a) t * ('a -> 'r) -> ('re, 'r) route
 
 let route re f = Route (re, f)
 
@@ -428,7 +429,7 @@ let rec pp_list pp ppf = function
     pp_list pp ppf vs
 
 let rec pp
-  : type a. _ -> a t -> unit
+  : type a. _ -> (_, a) t -> unit
   = fun ppf -> let open T in function
   | Regexp (re,_) -> sexp ppf "Re" "%a" Re.pp re
   | Conv (tre,_) -> sexp ppf "Conv" "%a" pp tre
