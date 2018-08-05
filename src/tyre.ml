@@ -42,8 +42,6 @@ module Gen = struct
 
 end
 
-let map_3 f (x,y,z) = (x, y, f z)
-
 (** {2 The various types} *)
 
 type 'a gen = unit -> 'a option
@@ -70,8 +68,8 @@ module T = struct
   type _ wit =
     | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * 'a wit -> 'a option wit
-    | Alt    : Re.markid * 'a wit * 'b wit
+    | Opt    : int * 'a wit -> 'a option wit
+    | Alt    : int * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
@@ -263,9 +261,6 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
 
     In order to record how we constructed the regexp and how to later
     extract information, we build a witness containing all the tools we need.
-
-    Each alternative is marked with {!Re.mark}. We store the markid in order
-    to be able to guess the branch matched.
 *)
 
 let rec build
@@ -278,12 +273,17 @@ let rec build
       let i', w, re = build i e in
       i', Conv (w, conv), re
     | Opt e ->
-      let i', w, (id, re) = map_3 mark @@ build i e in
-      i', Opt (id,w), opt re
+      let i', w, re = build i e in
+      (* Invariant: There is at least one group in the subregex. *)
+      assert (i' > i) ;
+      i', Opt (i,w), opt re
     | Alt (e1,e2) ->
-      let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
+      let i', w1, re1 = build i e1 in
       let i'', w2, re2 = build i' e2 in
-      i'', Alt (id1, w1, w2), alt [re1 ; re2]
+      (* Invariant: There is at least one group in each subregex. *)
+      assert (i'' > i' && i' > i);
+      let idx = i in
+      i'', Alt (idx, w1, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
       let i', w, re = build i e in
       let _, _, re_ign = build 1 e_ign in
@@ -318,14 +318,13 @@ let rec extract
       let v = extract ~original w s in
       conv.to_ v
     | Opt (id,w) ->
-      if not @@ Re.marked s id then None
+      if not @@ Re.Group.test s id then None
       else Some (extract ~original w s)
-    | Alt (i1,w1,w2) ->
-      if Re.marked s i1 then
-        `Left (extract ~original w1 s)
-      else
-        (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
-        `Right (extract ~original w2 s)
+    | Alt (idx,w1,w2) ->
+      (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
+      if Re.Group.test s idx
+      then `Left (extract ~original w1 s)
+      else `Right (extract ~original w2 s)
     | Seq (e1,e2) ->
       let v1 = extract ~original e1 s in
       let v2 = extract ~original e2 s in
@@ -355,7 +354,7 @@ let route re f = Route (re, f)
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.markid * 'a T.wit * ('a -> 'r) -> 'r wit_route
+    WRoute : int * 'a T.wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -364,8 +363,8 @@ let rec build_route_aux i rel wl = function
   | [] -> List.rev rel, List.rev wl
   | Route (tre, f) :: l ->
     let i', wit, re = build i tre in
-    let id, re = Re.mark re in
-    let w = WRoute (id, wit, f) in
+    assert (i' > i);
+    let w = WRoute (i, wit, f) in
     build_route_aux i' (re::rel) (w::wl) l
 
 let build_route l = build_route_aux 1 [] [] l
@@ -375,7 +374,7 @@ let rec extract_route ~original wl subs = match wl with
     (* Invariant: At least one of the regexp of the alternative matches. *)
     assert false
   | WRoute (id, wit, f) :: wl ->
-    if Re.Mark.test subs id then
+    if Re.Group.test subs id then
       f (extract ~original wit subs)
     else
       extract_route ~original wl subs
