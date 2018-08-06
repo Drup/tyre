@@ -37,7 +37,7 @@ DOCDIR=.gh-pages
 git clone https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG} $DOCDIR 2>&1 | sed -e "s/$GH_TOKEN/!REDACTED!/g"
 git -C $DOCDIR checkout gh-pages || git -C $DOCDIR checkout --orphan gh-pages
 
-cp -r _build/default/_doc/_html/* $(DOCDIR)/doc/dev/
+cp -r _build/default/_doc/_html/* ${DOCDIR}/doc/dev/
 
 git -C $DOCDIR config user.email "travis@travis-ci.org"
 git -C $DOCDIR config user.name "Travis"
