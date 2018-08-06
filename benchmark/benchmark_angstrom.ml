@@ -1,9 +1,16 @@
 [@@@ocaml.warning "-40-44-48"]
 
+let length seq = 
+  let rec aux acc seq = match seq () with
+    | Seq.Nil -> acc
+    | Cons (_, l) -> aux (acc + 1) l
+  in
+  aux 0 seq
+
 let re = Tyre.compile Tyre.(whole_string @@ rep RFC2616.request)
 let tyre s =
   match Tyre.exec re s with
-  | Result.Ok l -> assert (Gen.length l = 55 * 100)
+  | Result.Ok l -> assert (length l = 55 * 100)
   | Result.Error _ -> failwith "oups"
 
 let tyre_test s =
@@ -14,9 +21,9 @@ let tyre_all s =
   match Tyre.all re2 s with
   | Result.Ok l -> assert (List.length l = 55 * 100)
   | Result.Error _ -> failwith "oups"
-let tyre_all_gen s =
-  let l = Tyre.all_gen re2 s in
-  assert (Gen.length l = 55 * 100)
+let tyre_all_seq s =
+  let l = Tyre.all_seq re2 s in
+  assert (length l = 55 * 100)
 
 let angstrom s =
   match Angstrom.(parse_string (many Angstrom_rFC2616.request)) s with
@@ -31,7 +38,7 @@ let s = CCIO.read_all oc
 let l = [
   "tyre", tyre ;
   "tyre.all", tyre_all ;
-  "tyre.all_gen", tyre_all_gen ;
+  "tyre.all_seq", tyre_all_seq ;
   "tyre.test", tyre_test ;
   "angstrom", angstrom ;
 ]

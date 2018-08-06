@@ -19,8 +19,9 @@ build: [
 
 depends: [
   "jbuilder" {build}
-  "re" {>= "1.7.0"}
+  "re" {>= "1.8.0"}
   "alcotest" {test & >= "0.8.0"}
   "result"
+  "seq"
 ]
 available: [ ocaml-version >= "4.02.0" ]
