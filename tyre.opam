@@ -1,6 +1,5 @@
 opam-version: "1.2"
 name: "tyre"
-version: "dev"
 maintainer: "Gabriel Radanne <drupyog@zoho.com>"
 authors: "Gabriel Radanne <drupyog@zoho.com>"
 homepage: "https://github.com/Drup/tyre"
