@@ -1,5 +1,13 @@
 # Change Log
 
+## 04 (06 August 2018)
+
+* Move to dune
+* Remove the need for Re.marks. 
+  This might open the way to alterative backends, such as JS regexs.
+  See https://github.com/Drup/tyre/issues/1 for details.
+* Use Seq instead of Gen. This is a breaking change.
+
 ## 0.3 (17 April 2017)
 
 * Performance improvements.
