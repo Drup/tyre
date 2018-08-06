@@ -14,7 +14,7 @@ Documentation is available [here][doc]. See also the [examples/](examples/) dire
 A primitive HTTP parser can be found in the [benchmark/](benchmark/) directory.
 
 [re]: https://github.com/ocaml/ocaml-re
-[doc]: https://drup.github.io/tyre/dev/Tyre.html
+[doc]: https://drup.github.io/tyre/doc/dev/tyre/Tyre/index.html
 
 ```ocaml
 # let dim = Tyre.( str"dim:" *> int <&> str"x" *> int ) ;;
