@@ -62,14 +62,14 @@ let test_all title desc cre re l s =
     (title^" all") (Tyre.all cre s) (Result.Ok l) ;
   A.(check string) (title^" eval all") s (Tyre.eval (list re) l)
 
-let t' title desc re v s =
+let t' ?(all=true) title desc re v s =
   title, `Quick, fun () ->
     let cre = Tyre.compile re in
     test title desc cre re v s ;
-    test_all title desc cre re [v] s
+    if all then test_all title desc cre re [v] s
 
-let t title desc re v s =
-  t' title desc (Tyre.whole_string re) v s
+let t ?all title desc re v s =
+  t' ?all title desc (Tyre.whole_string re) v s
 
 let topt' title desc re v s s' =
   title, `Quick,
@@ -131,6 +131,17 @@ let composed = [
     [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
 ]
 
+
+let marks =
+  let t ?all s =
+    t ?all s A.(choice (option string) (option string))
+      (opt @@ pcre "a" <|> opt @@ pcre "b")
+  in [
+    t "alt option left" (`Left (Some "a")) "a" ;
+    t "alt option rigth" (`Right (Some "b")) "b" ;
+    t ~all:false "alt option none" (`Left None) "" ;
+  ]
+
 let nomatch = [
   nomatch "int" A.int int "a" ;
   nomatch "bool" A.bool bool "" ;
@@ -176,6 +187,7 @@ let () = Alcotest.run "tyre" [
     "not whole", notwhole ;
     "prefix suffix", prefix_suffix ;
     "composed", composed ;
+    "marks", marks ;
     "routes", route_test ;
     "nomatch", nomatch ;
     "convfail", conv_failure ;
