@@ -1,6 +1,9 @@
-# Change Log
+# 0.4.1 (17 August 2018)
 
-## 04 (06 August 2018)
+* Reverts the removal of Re.marks.
+  This fixes various bugs in the previous version.
+
+# 0.4 (06 August 2018)
 
 * Move to dune
 * Remove the need for Re.marks. 
@@ -8,14 +11,14 @@
   See https://github.com/Drup/tyre/issues/1 for details.
 * Use Seq instead of Gen. This is a breaking change.
 
-## 0.3 (17 April 2017)
+# 0.3 (17 April 2017)
 
 * Performance improvements.
 * Fix the behavior of opt (Prefer eating input).
 * Remove conv_fail and allow usual converters to fail with an exception.
 * Add Tyre.all and Tyre.all_gen
 
-## 0.2 (08 October 2016)
+# 0.2 (08 October 2016)
 * Rename `<?>` to `<|>`
 * Rename `<*>` to `<&>`
 * Add the `str` and `char` combinators for constant patterns.
@@ -33,9 +36,9 @@
   tyregex don't match the whole string by default anymore.
   You can use `Tyre.whole_string` or `Tyre.start` and `Tyre.stop` instead.
 
-## 0.1.1 (09 September 2016)
+# 0.1.1 (09 September 2016)
 * Fix a bug with nested repetitions. Also avoid some copying of the original string.
 * Add Tyre.execp
 
-## 0.1 (11 August 2016)
+# 0.1 (11 August 2016)
 First version :tada:
