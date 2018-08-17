@@ -295,8 +295,8 @@ module Internal : sig
   type _ wit =
     | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : int * 'a wit -> 'a option wit
-    | Alt    : int * 'a wit * 'b wit
+    | Opt    : Re.markid * 'a wit -> 'a option wit
+    | Alt    : Re.markid * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
