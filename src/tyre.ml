@@ -296,7 +296,7 @@ let rec build
 
     To avoid copy, we pass around the original string (and we use positions).
 *)
-let rec extract
+let[@specialize] rec extract
   : type a. original:string -> a T.wit -> Re.substrings -> a
   = fun ~original rea s -> let open T in match rea with
     | Lit i -> Re.get s i
@@ -324,7 +324,7 @@ let rec extract
     grouping under a star (one could argue it's theoretically not
     possible as it would be equivalent to counting in an automaton).
 *)
-and extract_list
+and[@specialize] extract_list
   : type a. original:string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t
   = fun ~original e re i s ->
     let aux = extract ~original e in
@@ -394,7 +394,7 @@ let extract_with_info ~info ~original subs = match info with
   | One w -> extract ~original w subs
   | Routes wl -> extract_route ~original wl subs
 
-let exec ?pos ?len ({ info ; cre } as tcre) original =
+let[@inline] exec ?pos ?len ({ info ; cre } as tcre) original =
   match Re.exec_opt ?pos ?len cre original with
   | None -> Result.Error (`NoMatch (tcre, original))
   | Some subs ->
