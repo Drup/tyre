@@ -3,5 +3,15 @@
  (public_name tyre)
  (synopsis
    "Tyre is a set of combinators to build type-safe regular expressions")
- (libraries re result seq)
+ (libraries re tyrefun)
+ (modules Tyre Impl)
  (ocamlopt_flags :standard -O3))
+
+(library
+ (name        tyrefun)
+ (public_name tyre.fun)
+ (libraries result seq)
+ (modules_without_implementation sigs)
+ (modules Tyrefun Core Functor Sigs)
+ (ocamlopt_flags :standard -O3)
+)
