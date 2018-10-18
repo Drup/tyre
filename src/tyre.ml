@@ -32,16 +32,26 @@ end
 
 module type IDX = sig
   type t
-  val mark : int * 'a * Re.t -> int * 'a * t * Re.t
+  val with_mark :
+    (int -> 'b -> 'c * 'd * Re.t) -> int -> 'b -> 'c * 'd * t * Re.t
   val test : Re.Group.t -> t -> bool
 end
 
 module MarkIdx : IDX = struct
-  type t = Re.markid
-  let mark (i,w,re) =
+  type t = Re.Mark.t
+  let with_mark f i re =
+    let i, w, re = f i re in
     let idx, re = Re.mark re in
-    (i, w, idx, re)
+    i, w, idx, re
   let test = Re.Mark.test
+end
+module GroupIdx : IDX = struct
+  type t = int
+  let with_mark f i re =
+    let i', w, re = f (i+1) re in
+    let re = Re.group re in
+    i', w, i, re
+  let test = Re.Group.test
 end
 
 module Idx = MarkIdx
@@ -278,11 +288,11 @@ let rec build
       let i', w, re = build i e in
       i', Conv (w, conv), re
     | Opt e ->
-      let i', w, id, re = Idx.mark @@ build i e in
+      let i', w, id, re = Idx.with_mark build i e in
       i', Opt (id,w), opt re
     | Alt (e1,e2) ->
-      let i', w1, id1, re1 = Idx.mark @@ build i e1 in
-      let i'', w2, id2, re2 = Idx.mark @@ build i' e2 in
+      let i', w1, id1, re1 = Idx.with_mark build i e1 in
+      let i'', w2, id2, re2 = Idx.with_mark build i' e2 in
       i'', Alt (id1, w1, id2, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
       let i', w, re = build i e in
