@@ -10,16 +10,18 @@ dev-repo: "https://github.com/Drup/tyre.git"
 tags: [ "regex" ]
 
 build: [
-  ["jbuilder" "subst"]{pinned}
-  ["jbuilder" "build" "-p" name "-j" jobs]
-  ["jbuilder" "runtest" "-p" name] {with-test}
+  ["dune" "subst"]{pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 
 
 depends: [
-  "jbuilder" {build}
+  "ocaml" { >= "4.03.0" }
+  "dune" {build & >= "1.0"}
   "re" {>= "1.8.0"}
-  "alcotest" {test & >= "0.8.0"}
+  "alcotest" {with-test & >= "0.8.0"}
+  "odoc" { with-doc }
   "result"
   "seq"
 ]

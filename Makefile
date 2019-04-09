@@ -3,19 +3,19 @@ default: build
 
 .PHONY: build
 build: 
-	jbuilder build --dev @install
+	dune build @install
 
 .PHONY: test
 test:
-	jbuilder runtest --dev
+	dune runtest
 
 .PHONY: clean
 clean:
-	jbuilder clean
+	dune clean
 
 .PHONY: doc
 doc:
-	jbuilder build @doc
+	dune build @doc
 
 NAME=tyre
 DOCDIR=.gh-pages
