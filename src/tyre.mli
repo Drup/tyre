@@ -295,14 +295,14 @@ module Internal : sig
   type _ wit =
     | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * 'a wit -> 'a option wit
-    | Alt    : Re.markid * 'a wit * 'b wit
+    | Opt    : Re.Mark.t * 'a wit -> 'a option wit
+    | Alt    : Re.Mark.t * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
     | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
 
   val build : int -> 'a raw -> int * 'a wit * Re.t
-  val extract : original:string -> 'a wit -> Re.substrings -> 'a
+  val extract : original:string -> 'a wit -> Re.Group.t -> 'a
 
 end
