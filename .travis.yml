@@ -4,6 +4,7 @@ install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/ma
 script: bash -ex .travis-ci.sh
 env:
   global:
+  - PINS="tyre:."
   - PACKAGE=tyre
   - secure: GKTOZklOf/ZyPCWOEw89ECtSzNtLy+UBJXeruNuogWEPVd00Z01I0xncvnpf2+PKeyDaVXF7x/3XsxUxnXa0rBL/KLvdPX4zEdI0LB+ck8TaE33Q+sorxvjFIcN+arbdFbkNyqVy1nQrBq1n9OlM+HHBKO1clDbitgAb23rWzmRiC4742gY+SoNIl3LSVfA0JlOdth1UOwKpDhJC4r4LeeOJrmz0aefKvgAet/nmoEebv63Onghdiamx55e5CGEEecIXal7Goi02QAHmc8SFe/FfJxzpWiFHILpjTO/a58BwMu82UxKwpaYJFIcQ9GZMIW+eT+58VBitNzfM6YBQMhALCIOcz9Ed8oA+4Tiu9P5I8ls5th0LkQ5ln67F0LhjcaI+UYYAAsY7wiFFaQzsPmt0YZ+gX6Q1pM5Wy1wpD5wsiYjoGABnw2mmZDZSs5ftWUxMc42hxt/Z46hMRylf+OrQkqzvgCVEO6ScqtcCOdqZjbAn5Ydo3xoEfipbxs+IxQMulKWhNsXwhxgjYFbKHfsvmqs589iRFzMUmvd+zaEqhXSWencPBLr6w/D8CRGKIu8f1wKBHnfWca2R4zQ0OPYxnLijWuUb8Ty6wfbqeSvjWTj+6AuQxEwLDZiuT1f0DAvJFBcnrLEjqG3tPuHJ96oc3p/KUTrpZZER9SJ/8zw=
   - secure: oAAhgDvYsF5Yc6zMevCNu4hogt6I/Z9F9kAA9XUndvk5jdDN0iQo3dQaDmKpRQaVBvypRyX1PcXYTqgqu1mISUyiw3/fhwx1IZc9P4/mViOSnifgvSqGaB7FY8wMb7jdVcX1etz+VmBBoHlUiPPNKYz1L6fD+0xlvPToChcdLWzmo36z7r+RnmNKfKkrDuAYZhT8A/IjQpBT7auItVOdTFOTU8GMdb42IRum5vDBYo2A33SzbStaNu6KEx2LVCw8TPGxL8SAjLGZWrindXcOy7Eh38hQJUgswQBbchkKloPwGPbjdInobo2aR7MB7P76kqkSkbobxbuKhyKV5VWlLbXIzqj52CvKwP0+Ark/JUW7G8G7FWW+H5xcYPwF01Xwc/yCvDZEmWy8eXlVdnBah3SPUIFxZEWYQbGc3kvmvf+xtFUOJVTB0olq1WATfWtB8BXhii8a0nlKmUqC127LjZejnxLYNZqn9kwNTjwy0GIp01jfBiVcngBF+WEpD26FmYcvF+NVeVRL6HQ9c4Uz5RVc59w4M5tkvbu/9BrOQFMlJVfOo91nanMY7BMPSfBfO4SSGDvgTVmtEa1WVMwqsMB2n2hzuCPPggZyg/4NsW5waLFXv8Zuwalv1uFx+3hImYyaSa3CmrvC/TRBGT4k7Huvmc9FJA4aQ7hENrvUs8I=
@@ -21,3 +22,8 @@ matrix:
     env: OCAML_VERSION=4.07 DOC=true
   - os: osx
     env: OCAML_VERSION=4.07
+  - os: linux
+    env: OCAML_VERSION=4.07 REVDEPS=true
+  allow_failures:
+  - os: linux
+    env: OCAML_VERSION=4.07 REVDEPS=true

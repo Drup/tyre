@@ -54,8 +54,8 @@ module T = struct
   type _ wit =
     | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.markid * 'a wit -> 'a option wit
-    | Alt    : Re.markid * 'a wit * 'b wit
+    | Opt    : Re.Mark.t * 'a wit -> 'a option wit
+    | Alt    : Re.Mark.t * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
@@ -297,17 +297,17 @@ let rec build
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let[@specialize] rec extract
-  : type a. original:string -> a T.wit -> Re.substrings -> a
+  : type a. original:string -> a T.wit -> Re.Group.t -> a
   = fun ~original rea s -> let open T in match rea with
-    | Lit i -> Re.get s i
+    | Lit i -> Re.Group.get s i
     | Conv (w, conv) ->
       let v = extract ~original w s in
       conv.to_ v
     | Opt (id,w) ->
-      if not @@ Re.marked s id then None
+      if not @@ Re.Mark.test s id then None
       else Some (extract ~original w s)
     | Alt (i1,w1,w2) ->
-      if Re.marked s i1 then
+      if Re.Mark.test s i1 then
         `Left (extract ~original w1 s)
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
@@ -328,9 +328,9 @@ and[@specialize] extract_list
   : type a. original:string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t
   = fun ~original e re i s ->
     let aux = extract ~original e in
-    let (pos, pos') = Re.get_ofs s i in
+    let (pos, pos') = Re.Group.offset s i in
     let len = pos' - pos in
-    Seq.map aux @@ Re.all_seq ~pos ~len re original
+    Seq.map aux @@ Re.Seq.all ~pos ~len re original
 
 (** {4 Multiple match} *)
 
@@ -341,7 +341,7 @@ let route re f = Route (re, f)
 let (-->) = route
 
 type 'r wit_route =
-    WRoute : Re.markid * 'a T.wit * ('a -> 'r) -> 'r wit_route
+    WRoute : Re.Mark.t * 'a T.wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -407,7 +407,7 @@ let execp ?pos ?len {cre ; _ } original =
   Re.execp ?pos ?len cre original
 
 let all_seq ?pos ?len { info ; cre } original =
-  let seq = Re.all_seq ?pos ?len cre original in
+  let seq = Re.Seq.all ?pos ?len cre original in
   let get_res subs = extract_with_info ~info ~original subs in
   Seq.map get_res seq
 
