@@ -1,0 +1,6 @@
+(library
+ (name tyre_nomark)
+ ; (public_name tyre.nomark)
+ (libraries re)
+ (implements tyre.fun)
+)

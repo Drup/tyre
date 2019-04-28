@@ -14,20 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-open Tyrefun
-
-include Make(struct
-    include Re
-
-    type string = String.t
-    let pp_string = Format.pp_print_string
-
-    let exec = exec_opt
-    let all = Seq.all
-    let test = execp
-
-    module Idx = Impl.MarkIdx
-  end)
+include Tyrefun
 
 let pcre s = regex @@ Re.Pcre.re s
 

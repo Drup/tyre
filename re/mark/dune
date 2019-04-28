@@ -1,0 +1,6 @@
+(library
+ (name tyre_mark)
+ (public_name tyre.mark)
+ (libraries re)
+ (implements tyre.fun)
+)
