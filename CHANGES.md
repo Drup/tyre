@@ -1,3 +1,8 @@
+# 0.5 (24 January 2020)
+
+* Move to dune
+* Avoid deprecate Re functions
+
 # 0.4.1 (17 August 2018)
 
 * Reverts the removal of Re.marks.
