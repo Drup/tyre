@@ -19,11 +19,15 @@ matrix:
   - os: linux
     env: OCAML_VERSION=4.06
   - os: linux
-    env: OCAML_VERSION=4.07 DOC=true
-  - os: osx
     env: OCAML_VERSION=4.07
   - os: linux
-    env: OCAML_VERSION=4.07 REVDEPS=true
+    env: OCAML_VERSION=4.08
+  - os: linux
+    env: OCAML_VERSION=4.09 DOC=true
+  - os: osx
+    env: OCAML_VERSION=4.09
+  - os: linux
+    env: OCAML_VERSION=4.09 REVDEPS=true
   allow_failures:
   - os: linux
-    env: OCAML_VERSION=4.07 REVDEPS=true
+    env: OCAML_VERSION=4.09 REVDEPS=true
