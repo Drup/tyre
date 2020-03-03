@@ -53,13 +53,13 @@ let convfail title desc re s =
 
 let test title desc cre re v s =
   A.(check @@ tyre desc)
-    (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
-  A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
+    (title^" exec") (Result.Ok v) (Tyre.exec cre s) ;
+  A.(check bool) (title^" execp") true (Tyre.execp cre s) ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
 let test_all title desc cre re l s =
   A.(check @@ tyre @@ list desc)
-    (title^" all") (Tyre.all cre s) (Result.Ok l) ;
+    (title^" all") (Result.Ok l) (Tyre.all cre s)  ;
   A.(check string) (title^" eval all") s (Tyre.eval (list re) l)
 
 let t' ?(all=true) title desc re v s =
@@ -97,6 +97,9 @@ let basics = [
 
   topt "int option" A.int (opt int) 3 "3" "" ;
   t "int seq" A.(pair int bool) (int <&> bool) (3,true) "3true" ;
+
+  t "list" A.(list string) (list @@ pcre "a|b") ["a";"b";"a";"a"] "abaa";
+  t' "separated list" A.(list int) (separated_list ~sep:(char ',') int) [4;4;4] "4,4,4" ;
 ]
 
 let notwhole = [
