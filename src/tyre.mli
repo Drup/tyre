@@ -287,6 +287,8 @@ module Internal : sig
     from_ : 'b -> 'a ;
   }
 
+  type idx
+
   type 'a raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> string raw
@@ -305,9 +307,9 @@ module Internal : sig
   type _ wit =
     | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.Mark.t * 'a wit -> 'a option wit
-    | Alt    : Re.Mark.t * 'a wit * 'b wit
-      -> [`Left of 'a | `Right of 'b] wit
+    | Opt : idx * 'a wit -> 'a option wit
+    | Alt : idx * 'a wit * idx *
+            'b wit -> [ `Left of 'a | `Right of 'b ] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
     | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
