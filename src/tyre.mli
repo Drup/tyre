@@ -76,6 +76,9 @@ val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 (** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
 *)
 
+val alt_flat : 'a t -> 'a t -> 'a t
+(** [alt_flat tyreL tyreR] matches either [tyreL] or [tyreR] and return the value of the one that matched. *)
+
 (** {2 Repetitions} *)
 
 val rep : 'a t -> 'a Seq.t t
@@ -128,6 +131,9 @@ module Infix : sig
 
   val (<* ) : 'a t -> _ t -> 'a t
   (** [ t <* ti ] is [suffix t ti]. *)
+
+  val (<||>) : 'a t -> 'a t -> 'a t
+  (** [t <||> t' ] is [alt_flat t t']. *)
 
 end
 

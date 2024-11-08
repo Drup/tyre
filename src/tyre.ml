@@ -84,6 +84,12 @@ let const v x =
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
+let alt_flat tyre1 tyre2 =
+  conv
+    (function `Left a -> a | `Right a -> a)
+    (fun a -> `Left a)
+    (alt tyre1 tyre2)
+
 let prefix x a : _ t = Prefix (x, a)
 let suffix a x : _ t = Suffix (a, x)
 let opt a : _ t = Opt a
@@ -95,6 +101,8 @@ module Infix = struct
 
   let ( *>) = prefix
   let (<* ) = suffix
+
+  let ( <||> ) = alt_flat
 
 end
 include Infix
