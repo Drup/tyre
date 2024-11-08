@@ -181,6 +181,26 @@ let route_test = [
   troute "route 4" "xxblob" 4 "xx" ;
 ]
 
+let treplace title s tyre result =
+  let tyre = compile tyre in
+  title, `Quick,
+  fun () ->
+    A.(check @@ result (string) reject)
+      title (replace tyre s) (Ok result)
+
+let replace_test = [
+treplace
+  "mult2"
+  "foo123 134 45678"
+  ( ( conv
+        (fun i -> string_of_int (i * 2))
+        (fun _str -> assert false) int
+    )
+  )
+  ( "foo246 268 91356" )
+
+]
+
 
 let () = Alcotest.run "tyre" [
     "basics", basics ;
@@ -191,4 +211,5 @@ let () = Alcotest.run "tyre" [
     "routes", route_test ;
     "nomatch", nomatch ;
     "convfail", conv_failure ;
+    "replace", replace_test
   ]

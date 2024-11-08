@@ -222,6 +222,10 @@ val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
     @since 0.1.1
 *)
 
+val replace : ?pos:int -> ?len:int -> ?all:bool -> string re -> string -> (string, [> `ConverterFailure of exn ]) result
+(** [replace ctyre s] returns [s] where every match of [ctyre] has been replaced by the value associated to [value].
+    If [all] is set to [false], it only replaces the first match. *)
+
 
 (** {2:repeat Repeated Matching} *)
 
