@@ -1,6 +1,6 @@
 (** {1 Typed regular expressions} *)
 
-(** 
+(**
 Tyre is a set of combinators to build type-safe regular expressions, allowing automatic extraction and modification of matched groups.
 
 Tyre is bi-directional: a typed regular expressions can be used both for {{!matching}matching} and {{!eval}evaluation}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
@@ -40,7 +40,7 @@ type 'a t
 (** {1 Combinators} *)
 
 val pcre : string -> string t
-(** [pcre s] is a tyregex that matches the PCRE [s] and return the 
+(** [pcre s] is a tyregex that matches the PCRE [s] and return the
     corresponding string.
     Groups in [s] are ignored.
 *)
@@ -65,6 +65,9 @@ let pos_int =
     (Tyre.regex (Re.rep1 Re.digit))
 ]}
 *)
+
+val attach : 'a -> unit t -> 'a t
+(** [attach v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
 
 val opt : 'a t -> 'a option t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
