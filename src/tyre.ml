@@ -87,8 +87,14 @@ let alt a b : _ t = Alt (a, b)
 let alt_flat tyre1 tyre2 =
   conv
     (function `Left a -> a | `Right a -> a)
-    (fun a -> `Left a)
+    (fun _a -> failwith "alt_flat is not compatible with `eval`. Use `alt_flat_eval` instead.")
     (alt tyre1 tyre2)
+
+let alt_flat_eval : type a. (a -> [`Left | `Right]) -> a t -> a t -> a t = fun from_ l r ->
+  conv
+    (function `Left a -> a | `Right a -> a)
+    (fun a -> match from_ a with `Left -> `Left a | `Right -> `Right a)
+    (alt l r)
 
 let prefix x a : _ t = Prefix (x, a)
 let suffix a x : _ t = Suffix (a, x)

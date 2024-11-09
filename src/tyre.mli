@@ -76,8 +76,20 @@ val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
 (** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
 *)
 
+
 val alt_flat : 'a t -> 'a t -> 'a t
-(** [alt_flat tyreL tyreR] matches either [tyreL] or [tyreR] and return the value of the one that matched. *)
+(** [alt_flat l r] matches either [l] or [r] and return the value of the one
+    that matched. Be warned : it is not compatible with [eval], use
+    {!alt_flat_eval} instead.
+
+    The reason is that when evaluating [alt_flat l r] with a value `v`, `eval`
+    has no way to know if the value could have been returned by [l] or by [r].
+    *)
+
+val alt_flat_eval : ('a -> [`Left | `Right]) -> 'a t -> 'a t -> 'a t
+(** [alt_flat_eval from_ l r] is [alt_flat l r] but uses [from_] when [eval] is
+  called on it. [from_ v] should indicate whether [v] is compatible with [l] or
+  with [r].*)
 
 (** {2 Repetitions} *)
 
@@ -133,7 +145,8 @@ module Infix : sig
   (** [ t <* ti ] is [suffix t ti]. *)
 
   val (<||>) : 'a t -> 'a t -> 'a t
-  (** [t <||> t' ] is [alt_flat t t']. *)
+  (** [t <||> t' ] is [alt_flat t t']. Be warned : it is not compatible with
+      [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
 
 end
 
