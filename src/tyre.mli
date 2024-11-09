@@ -1,6 +1,6 @@
 (** {1 Typed regular expressions} *)
 
-(** 
+(**
 Tyre is a set of combinators to build type-safe regular expressions, allowing automatic extraction and modification of matched groups.
 
 Tyre is bi-directional: a typed regular expressions can be used both for {{!matching}matching} and {{!eval}evaluation}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
@@ -40,7 +40,7 @@ type 'a t
 (** {1 Combinators} *)
 
 val pcre : string -> string t
-(** [pcre s] is a tyregex that matches the PCRE [s] and return the 
+(** [pcre s] is a tyregex that matches the PCRE [s] and return the
     corresponding string.
     Groups in [s] are ignored.
 *)
@@ -222,8 +222,9 @@ val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
     @since 0.1.1
 *)
 
-val replace : ?pos:int -> ?len:int -> ?all:bool -> string re -> string -> (string, [> `ConverterFailure of exn ]) result
-(** [replace ctyre s] returns [s] where every match of [ctyre] has been replaced by the value associated to [value].
+val replace : ?pos:int -> ?len:int -> ?all:bool -> 'a re ->  ('a -> string) -> string -> (string, [> `ConverterFailure of exn ]) result
+(** [replace r f s] returns [s] where every match of [r] has been
+    replaced  by [f v] where [v] is the value associated with [r].
     If [all] is set to [false], it only replaces the first match. *)
 
 

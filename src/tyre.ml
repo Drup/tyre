@@ -403,11 +403,11 @@ let[@inline] exec ?pos ?len ({ info ; cre } as tcre) original =
     with exn ->
       Result.Error (`ConverterFailure exn)
 
-let replace ?pos ?len ?all ({ info ; cre }) original =
+let replace ?pos ?len ?all ({ info ; cre }) f original =
   try
     Ok (
       Re.replace ?pos ?len ?all cre original
-        ~f:(fun subs -> extract_with_info ~info ~original subs)
+        ~f:(fun subs -> f (extract_with_info ~info ~original subs))
     )
   with exn -> Result.Error (`ConverterFailure exn)
 
