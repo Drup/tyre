@@ -66,8 +66,8 @@ let pos_int =
 ]}
 *)
 
-val attach : 'a -> unit t -> 'a t
-(** [attach v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
+val const : 'a -> unit t -> 'a t
+(** [const v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
 
 val opt : 'a t -> 'a option t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
