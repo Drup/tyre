@@ -225,6 +225,11 @@ val execp : ?pos:int -> ?len:int -> 'a re -> string -> bool
     @since 0.1.1
 *)
 
+val replace : ?pos:int -> ?len:int -> ?all:bool -> 'a re ->  ('a -> string) -> string -> (string, [> `ConverterFailure of exn ]) result
+(** [replace r f s] returns [s] where every match of [r] has been
+    replaced  by [f v] where [v] is the value associated with [r].
+    If [all] is set to [false], it only replaces the first match. *)
+
 
 (** {2:repeat Repeated Matching} *)
 
