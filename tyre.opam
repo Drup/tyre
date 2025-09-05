@@ -3,7 +3,7 @@ name: "tyre"
 maintainer: "Gabriel Radanne <drupyog@zoho.com>"
 authors: "Gabriel Radanne <drupyog@zoho.com>"
 homepage: "https://github.com/Drup/tyre"
-doc: "https://drup.github.io/tyre/doc/dev/tyre/Tyre/"
+doc: "https://ocaml.org/p/tyre/latest"
 bug-reports: "https://github.com/Drup/tyre/issues"
 license: "ISC"
 dev-repo: "git+https://github.com/Drup/tyre.git"
@@ -19,11 +19,13 @@ build: [
 depends: [
   "ocaml" { >= "4.03.0" }
   "dune" {build & >= "1.0"}
-  "re" {>= "1.8.0"}
-  "alcotest" {with-test & >= "0.8.0"}
-  "odoc" { with-doc }
   "result"
   "seq"
+  "re" {>= "1.8.0"}
+  "gen" {with-test & >= "1.0"}
+  "containers" {with-test & >= "3.0"}
+  "alcotest" {with-test & >= "0.8.0"}
+  "odoc" { with-doc }
 ]
 
 synopsis: "Typed Regular Expressions"

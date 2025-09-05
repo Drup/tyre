@@ -1,4 +1,4 @@
-# Tyre [![Build Status](https://travis-ci.org/Drup/tyre.svg?branch=master)](https://travis-ci.org/Drup/tyre) [![docs](https://img.shields.io/badge/doc-online-blue.svg)][doc]
+# Tyre [![docs](https://img.shields.io/badge/doc-online-blue.svg)][doc]
 
 Tyre is a set of combinators to build type-safe regular expressions, allowing automatic extraction and modification of matched groups.
 
@@ -14,7 +14,7 @@ Documentation is available [here][doc]. See also the [examples/](examples/) dire
 A primitive HTTP parser can be found in the [benchmark/](benchmark/) directory.
 
 [re]: https://github.com/ocaml/ocaml-re
-[doc]: https://drup.github.io/tyre/doc/dev/tyre/Tyre/index.html
+[doc]: https://ocaml.org/p/tyre/latest
 
 ```ocaml
 # let dim = Tyre.( str"dim:" *> int <&> str"x" *> int ) ;;
@@ -38,5 +38,5 @@ tyre methods.
 You can run them with:
 ```
 ./benchmark/data/replicate benchmark/data/http-requests.txt 100
-jbuilder exec benchmark/benchmark_angstrom.exe -- -a
+dune exec benchmark/benchmark_angstrom.exe -- -a
 ```
