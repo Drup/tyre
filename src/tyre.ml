@@ -78,6 +78,9 @@ let pcre s = regex @@ Re.Pcre.re s
 let conv to_ from_ x : _ t =
   Conv (x, {to_; from_})
 
+let const v x =
+  conv (fun () -> v) (fun _ -> ()) x
+
 let seq a b : _ t = Seq (a, b)
 let alt a b : _ t = Alt (a, b)
 
