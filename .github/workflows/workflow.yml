@@ -40,7 +40,6 @@ jobs:
 
   lint-doc:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout tree
         uses: actions/checkout@v5
@@ -49,6 +48,7 @@ jobs:
         with:
           ocaml-compiler: 5
       - uses: ocaml/setup-ocaml/lint-doc@v3
+        continue-on-error: true
 
   lint-opam:
     runs-on: ubuntu-latest
