@@ -25,7 +25,7 @@ end
 
 open Tyre
 exception ConvFail
-let cfail : unit t =
+let cfail : (_, unit) t =
   conv (fun _ -> raise ConvFail) (fun _ -> raise ConvFail) (regex Re.any)
 
 let test_fail title desc cre s error b =
@@ -57,6 +57,11 @@ let test title desc cre re v s =
   A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
+let test_pattern title desc cre v s =
+  A.(check @@ tyre desc)
+    (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
+  A.(check bool) (title^" execp") (Tyre.execp cre s) true
+
 let test_all title desc cre re l s =
   A.(check @@ tyre @@ list desc)
     (title^" all") (Tyre.all cre s) (Result.Ok l) ;
@@ -67,6 +72,11 @@ let t' ?(all=true) title desc re v s =
     let cre = Tyre.compile re in
     test title desc cre re v s ;
     if all then test_all title desc cre re [v] s
+
+let t_pat title desc re v s =
+  title, `Quick, fun () ->
+    let cre = Tyre.compile re in
+    test_pattern title desc cre v s
 
 let t ?all title desc re v s =
   t' ?all title desc (Tyre.whole_string re) v s
@@ -137,7 +147,11 @@ let composed = [
   t "list of list"
     A.(list @@ list @@ choice int string)
     (list @@ str"@" *> list (pos_int <|> regex Re.alpha))
-    [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
+    [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33";
+  t_pat "alt flat" A.(list @@ string) (list (regex Re.digit <||> regex Re.alpha))
+    ["1"; "a"; "2"; "5"; "c"] "1a25c";
+  t_pat "map" A.(list @@ int) (list (map Char.code any))
+    [49; 97; 50; 53; 99] "1a25c"
 ]
 
 

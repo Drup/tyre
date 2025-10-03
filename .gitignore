@@ -7,3 +7,5 @@ perf.*
 *.install
 
 benchmark/data/http-requests.txt.*
+
+.vscode

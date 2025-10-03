@@ -29,28 +29,51 @@ val dim : (int * int) Tyre.t
 
 *)
 
-type 'a t
+type non_evaluable
+type evaluable
+
+type ('evaluable, 'a) t
 (** A typed regular expression.
 
-    The type variable is the type of the returned value when the typed regular expression (tyregex) is executed.
+    The type variable is the type of the returned value when the typed regular
+    expression (tyregex) is executed.
 
-    For example [tyre : int t] can be used to return an [int]. In the rest of the documentation, we will use «[tyre]» to designate a value of type {!t}.
+    For example [tyre : (_, int) t] can be used to return an [int]. In the rest
+    of the documentation, we will use «[tyre]» to designate a value of type
+    {!t}.
+
+    A value of type [(evaluable, a) t] can be used with the {!eval} function to
+    returns a string [s] such that [exec (compile tyre) s = v]. We call such a
+    value an {!expression}.
+
+    A value of type [(non_evaluable, a) t] can only be used with functions that
+    match a string, it can't be used to produce an example string. Because its
+    only usable for matching, it is called a {!pattern}.
 *)
+
+type 'a pattern = (non_evaluable, 'a) t
+(** A regexp only usable for matching *)
+
+type 'a expression = (evaluable, 'a) t
+(** A regexp usable both for matching and evaluating. *)
+
+val unlift: 'a expression -> 'a pattern
+(** Turn an expression into a pattern. *)
 
 (** {1 Combinators} *)
 
-val pcre : string -> string t
+val pcre : string -> string expression
 (** [pcre s] is a tyregex that matches the PCRE [s] and return the
     corresponding string.
     Groups in [s] are ignored.
 *)
 
-val regex : Re.t -> string t
+val regex : Re.t -> string expression
 (** [regex re] is a tyregex that matches [re] and return the corresponding string.
     Groups inside [re] are erased.
 *)
 
-val conv : ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
+val conv : ('a -> 'b) -> ('b -> 'a) -> 'a expression -> 'b expression
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
     [to_] is allowed to raise an exception [exn].
@@ -66,129 +89,145 @@ let pos_int =
 ]}
 *)
 
-val const : 'a -> unit t -> 'a t
+val map : ('a -> 'b) -> (_, 'a) t -> 'b pattern
+(** [map f tyre] is a regexp that matches [tyre] and returns [f v]. It cannot be
+  used for evaluating. *)
+
+val const : 'a -> ('e, unit) t -> ('e, 'a) t
 (** [const v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
 
-val opt : 'a t -> 'a option t
+val opt : ('e, 'a) t -> ('e, 'a option) t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
 
-val alt : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+val alt : ('e, 'a) t -> ('e, 'b) t -> ('e, [`Left of 'a | `Right of 'b]) t
 (** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
 *)
 
-
-val alt_flat : 'a t -> 'a t -> 'a t
+val alt_flat : (_,'a) t -> (_, 'a) t -> 'a pattern
 (** [alt_flat l r] matches either [l] or [r] and return the value of the one
-    that matched. Be warned : it is not compatible with [eval], use
-    {!alt_flat_eval} instead.
+    that matched. It is not compatible with [eval], use
+    {!alt_flat_eval} might be used instead.
 
     The reason is that when evaluating [alt_flat l r] with a value `v`, `eval`
     has no way to know if the value could have been returned by [l] or by [r].
     *)
 
-val alt_flat_eval : ('a -> [`Left | `Right]) -> 'a t -> 'a t -> 'a t
+val alt_flat_eval : ('a -> [`Left | `Right]) -> ('e, 'a) t -> ('e, 'a) t -> ('e, 'a) t
 (** [alt_flat_eval from_ l r] is [alt_flat l r] but uses [from_] when [eval] is
   called on it. [from_ v] should indicate whether [v] is compatible with [l] or
   with [r].*)
 
 (** {2 Repetitions} *)
 
-val rep : 'a t -> 'a Seq.t t
+val rep : ('e, 'a) t -> ('e, 'a Seq.t) t
 (** [rep tyre] matches [tyre] zero or more times. Similar to {!Re.rep}.
 
     For {{!matching}matching}, [rep tyre] will matches the string a first time, then [tyre] will be used to walk the matched part to extract values.
 *)
 
-val rep1 : 'a t -> ('a * 'a Seq.t) t
+val rep1 : ('e, 'a) t -> ('e, ('a * 'a Seq.t)) t
 (** [rep1 tyre] is [seq tyre (rep tyre)]. Similar to {!Re.rep1}. *)
 
 (** {2 Sequences} *)
 
-val seq : 'a t -> 'b t -> ('a * 'b) t
+val seq : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
 
-val prefix : _ t -> 'a t -> 'a t
+val prefix : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
 (** [prefix tyre_i tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result. Converters in [tyre_i] are never called.
 *)
 
-val suffix : 'a t -> _ t -> 'a t
+val suffix : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
 (** Same as [prefix], but reversed. *)
-
 
 
 (** {2 Infix operators} *)
 
-val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+val (<|>) : ('e, 'a) t -> ('e, 'b) t -> ('e, [`Left of 'a | `Right of 'b]) t
 (** [t <|> t'] is [alt t t']. *)
 
-val (<&>) : 'a t -> 'b t -> ('a * 'b) t
+val (<||>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
+(** [t <||> t' ] is [alt_flat t t']. It is not compatible with
+    [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
+
+val (<&>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
 (** [t <&> t'] is [seq t t']. *)
 
-val ( *>) : _ t -> 'a t -> 'a t
+val ( *>) : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
 (** [ ti *> t ] is [prefix ti t]. *)
 
-val (<* ) : 'a t -> _ t -> 'a t
+val (<* ) : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
 (** [ t <* ti ] is [suffix t ti]. *)
 
 module Infix : sig
 
-  val (<|>) : 'a t -> 'b t -> [`Left of 'a | `Right of 'b] t
+  val (<|>) : ('e, 'a) t -> ('e, 'b) t -> ('e, [`Left of 'a | `Right of 'b]) t
   (** [t <|> t'] is [alt t t']. *)
 
-  val (<&>) : 'a t -> 'b t -> ('a * 'b) t
+  val (<||>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
+  (** [t <||> t' ] is [alt_flat t t']. It is not compatible with
+      [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
+
+  val (<&>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
   (** [t <&> t'] is [seq t t']. *)
 
-  val ( *>) : _ t -> 'a t -> 'a t
+  val ( *>) : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
   (** [ ti *> t ] is [prefix ti t]. *)
 
-  val (<* ) : 'a t -> _ t -> 'a t
+  val (<* ) : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
   (** [ t <* ti ] is [suffix t ti]. *)
 
-  val (<||>) : 'a t -> 'a t -> 'a t
-  (** [t <||> t' ] is [alt_flat t t']. Be warned : it is not compatible with
-      [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
+
 
 end
 
+(** {2 Let operators}*)
+
+val (let+) : ('e, 'a) t -> ('a -> 'b) ->  'b pattern
+(** [let+ x = y in z] is [map (fun x -> z) y]. *)
+
+val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
+(** [(and+) x y] is [seq x y]. *)
+
 (** {2 Useful combinators} *)
 
-val str : string -> unit t
+val str : string -> unit expression
 (** [str s] matches [s] and evaluates to [s]. *)
 
-val char : char -> unit t
+val char : char -> unit expression
 (** [char c] matches [c] and evaluates to [c]. *)
 
-val blanks : unit t
+val blanks : unit expression
 (** [blanks] matches [Re.(rep blank)] and doesn't return anything. *)
 
-val int : int t
+val int : int expression
 (** [int] matches [-?[0-9]+] and returns the matched integer.
 
     Integers that do not fit in an [int] will fail.
 *)
 
-val pos_int : int t
+val pos_int : int expression
 (** [pos_int] matches [[0-9]+] and returns the matched positive integer.
 
     Integers that do not fit in an [int] will fail.
 *)
 
-val float : float t
+val float : float expression
 (** [float] matches [-?[0-9]+( .[0-9]* )?] and returns the matched floating point number.
 
     Floating point numbers that do not fit in a [float] returns {!infinity} or {!neg_infinity}.
 *)
 
-val bool : bool t
+val bool : bool expression
 (** [bool] matches [true|false] and returns the matched boolean. *)
 
-val list : 'a t -> 'a list t
+val list : ('e, 'a) t -> ('e, 'a list) t
 (** [list e] is similar to [rep e], but returns a list. *)
 
-val terminated_list : sep:_ t -> 'a t -> 'a list t
+val terminated_list : sep:('e, _) t -> ('e, 'a) t -> ('e, 'a list) t
 (** [terminated_list ~sep tyre] is [ list (tyre <* sep) ]. *)
 
-val separated_list : sep:_ t -> 'a t -> 'a list t
+val separated_list : sep:_ t -> ('e, 'a) t -> ('e, 'a list) t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <&> list (sep *> e))]. *)
 
 module Charset: sig
@@ -250,31 +289,31 @@ module Charset: sig
   val xdigit : t
 end
 
-val charset : Charset.t -> char t
+val charset : Charset.t -> char expression
 (** [charset cs] is a regular expression that matches any character in [cs]. *)
 
-(** {2 Predefined character sets as [Tyre.t]} *)
+(** {2 Predefined character sets as [char expressions]} *)
 
-val any: char t
-val notnl: char t
-val wordc : char t
-val alpha : char t
-val ascii : char t
-val blank : char t
-val cntrl : char t
+val any: char expression
+val notnl: char expression
+val wordc : char expression
+val alpha : char expression
+val ascii : char expression
+val blank : char expression
+val cntrl : char expression
 
-val digit : char t
+val digit : char expression
 (** There are combinators for {!int}s and {!float}s, using them is advisable. *)
 
-val graph : char t
-val lower : char t
-val print : char t
-val punct : char t
-val space : char t
-val upper : char t
-val xdigit : char t
+val graph : char expression
+val lower : char expression
+val print : char expression
+val punct : char expression
+val space : char expression
+val upper : char expression
+val xdigit : char expression
 
-val any_string : string t
+val any_string : string expression
 (** matches the same strings as [rep any] but returns the matched string instead
   of a list of chars. *)
 
@@ -282,24 +321,24 @@ val any_string : string t
 
     See {!Re} for details on the semantics of those combinators. *)
 
-val start : unit t
-val stop : unit t
+val start : unit expression
+val stop : unit expression
 
-val word : 'a t -> 'a t
-val whole_string : 'a t -> 'a t
-val longest : 'a t -> 'a t
-val shortest : 'a t -> 'a t
-val first : 'a t -> 'a t
-val greedy : 'a t -> 'a t
-val non_greedy : 'a t -> 'a t
-val nest : 'a t -> 'a t
+val word : ('e, 'a) t -> ('e, 'a) t
+val whole_string : ('e, 'a) t -> ('e, 'a) t
+val longest : ('e, 'a) t -> ('e, 'a) t
+val shortest : ('e, 'a) t -> ('e, 'a) t
+val first : ('e, 'a) t -> ('e, 'a) t
+val greedy : ('e, 'a) t -> ('e, 'a) t
+val non_greedy : ('e, 'a) t -> ('e, 'a) t
+val nest : ('e, 'a) t -> ('e, 'a) t
 
 (** {1:matching Matching} *)
 
 type 'a re
 (** A compiled typed regular expression. *)
 
-val compile : 'a t -> 'a re
+val compile : (_, 'a) t -> 'a re
 (** [compile tyre] is the compiled tyregex representing [tyre].
 *)
 
@@ -351,13 +390,13 @@ val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
 
 (** {2:routing Routing} *)
 
-type +'a route = Route : 'x t * ('x -> 'a) -> 'a route
+type +'a route = Route : (_, 'x) t * ('x -> 'a) -> 'a route
 (** A route is a pair of a tyregex and a handler.
     When the tyregex is matched, the function is called with the
     result of the matching.
 *)
 
-val (-->) : 'x t -> ('x -> 'a) -> 'a route
+val (-->) : (_, 'x) t -> ('x -> 'a) -> 'a route
 (** [tyre --> f] is [Route (tyre, f)]. *)
 
 val route : 'a route list -> 'a re
@@ -370,12 +409,12 @@ val route : 'a route list -> 'a re
 
 (** {1:eval Evaluating} *)
 
-val eval : 'a t -> 'a -> string
+val eval : 'a expression -> 'a -> string
 (** [eval tyre v] returns a string [s] such that [exec (compile tyre) s = v].
 
     Note that such string [s] is not unique. [eval] will usually returns a very simple witness. *)
 
-val evalpp : 'a t -> Format.formatter -> 'a -> unit
+val evalpp : 'a expression -> Format.formatter -> 'a -> unit
 (** [evalpp tyre ppf v] is equivalent to [Format.fprintf ppf "%s" (eval tyre v)], but more efficient.
 
     Is is generally used with ["%a"]:
@@ -387,7 +426,7 @@ Format.printf "%a@." my_pp v
 
 (** {1:pp Pretty printing} *)
 
-val pp : Format.formatter -> 'a t -> unit
+val pp : Format.formatter -> (_, 'a) t -> unit
 
 val pp_re : Format.formatter -> 'a re -> unit
 
@@ -401,32 +440,36 @@ module Internal : sig
     from_ : 'b -> 'a ;
   }
 
-  type 'a raw =
+  type ('evaluable, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp : Re.t * Re.re Lazy.t -> string raw
-    | Conv   : 'a raw * ('a, 'b) conv -> 'b raw
-    | Opt    : 'a raw -> ('a option) raw
-    | Alt    : 'a raw * 'b raw -> [`Left of 'a | `Right of 'b] raw
-    | Seq    : 'a raw * 'b raw -> ('a * 'b) raw
-    | Prefix : 'b raw * 'a raw -> 'a raw
-    | Suffix : 'a raw * 'b raw  -> 'a raw
-    | Rep    : 'a raw -> 'a Seq.t raw
-    | Mod    : (Re.t -> Re.t) * 'a raw -> 'a raw
+    | Regexp   : Re.t * Re.re Lazy.t -> ('e, string) raw
+    | Conv     : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
+    | Map      : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Opt      : ('e, 'a) raw -> ('e, 'a option) raw
+    | Alt      : ('e, 'a) raw * ('e, 'b) raw -> ('e, [`Left of 'a | `Right of 'b]) raw
+    | Alt_flat : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
+    | Seq      : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a * 'b)) raw
+    | Prefix   : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
+    | Suffix   : ('e, 'a) raw * (_, 'b) raw  -> ('e, 'a) raw
+    | Rep      : ('e, 'a) raw -> ('e, 'a Seq.t) raw
+    | Mod      : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
 
-  val from_t : 'a t -> 'a raw
-  val to_t : 'a raw -> 'a t
+  val from_t : ('e, 'a) t -> ('e, 'a) raw
+  val to_t : ('e, 'a) raw -> ('e, 'a) t
 
   type _ wit =
-    | Lit    : int -> string wit
-    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.Mark.t * 'a wit -> 'a option wit
-    | Alt    : Re.Mark.t * 'a wit * 'b wit
+    | Lit      : int -> string wit
+    | Conv     : 'a wit * ('a, 'b) conv -> 'b wit
+    | Map      : 'a wit * ('a -> 'b) -> 'b wit
+    | Opt      : Re.Mark.t * 'a wit -> 'a option wit
+    | Alt      : Re.Mark.t * 'a wit * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
-    | Seq    :
+    | Alt_flat : Re.Mark.t * 'a wit * 'a wit -> 'a wit
+    | Seq      :
         'a wit * 'b wit -> ('a * 'b) wit
-    | Rep   : int * 'a wit * Re.re -> 'a Seq.t wit
+    | Rep     : int * 'a wit * Re.re -> 'a Seq.t wit
 
-  val build : int -> 'a raw -> int * 'a wit * Re.t
+  val build : int -> (_, 'a) raw -> int * 'a wit * Re.t
   val extract : original:string -> 'a wit -> Re.Group.t -> 'a
 
 end

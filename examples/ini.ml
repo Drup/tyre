@@ -14,7 +14,7 @@ let section_title =
   let sec_name = "]" |> take_till |> strip in
   char '[' *> sec_name <* char ']'
 
-let entry : (string * string) Tyre.t =
+let entry : (string * string) Tyre.expression =
   let open Tyre in
   let equal = blanks *> char '=' <* blanks in
   let key = strip @@ take_till "[]=" in
