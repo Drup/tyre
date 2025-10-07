@@ -190,6 +190,67 @@ let separated_list ~sep e =
   in
   conv to_ from_ e
 
+module Charset = struct
+  type t = Re.t
+
+  let diff = Re.diff
+  let any = Re.any
+  let not s = diff Re.any s
+
+  let union = Re.alt
+
+  let inter = Re.inter
+
+  let compl = Re.compl
+
+  let (||) x y = union [x; y]
+  let (&&) x y = inter [x; y]
+
+  let (-) = diff
+
+  let char = Re.char
+  let range = Re.rg
+  let set = Re.set
+
+  let notnl = Re.notnl
+  let wordc = Re.wordc
+  let alpha = Re.alpha
+  let ascii = Re.ascii
+  let blank = Re.blank
+  let cntrl = Re.cntrl
+  let digit = Re.digit
+  let graph = Re.graph
+  let lower = Re.lower
+  let print = Re.print
+  let punct = Re.punct
+  let space = Re.space
+  let upper = Re.upper
+  let xdigit = Re.xdigit
+end
+
+let charset (set: Charset.t) =
+  conv
+    (fun str -> assert (String.length str = 1); str.[0])
+    (String.make 1)
+    (regex set)
+
+let any = charset Charset.any
+let notnl = charset Charset.notnl
+let wordc = charset Charset.wordc
+let alpha = charset Charset.alpha
+let ascii = charset Charset.ascii
+let blank = charset Charset.blank
+let cntrl = charset Charset.cntrl
+let digit = charset Charset.digit
+let graph = charset Charset.graph
+let lower = charset Charset.lower
+let print = charset Charset.print
+let punct = charset Charset.punct
+let space = charset Charset.space
+let upper = charset Charset.upper
+let xdigit = charset Charset.xdigit
+
+let any_string = regex Re.(rep any)
 
 (** {2 Witness} *)
 
