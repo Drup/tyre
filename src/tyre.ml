@@ -28,9 +28,33 @@ module Seq = struct
   let to_list gen = List.rev (to_rev_list gen)
 end
 
-let map_3 f (x,y,z) = (x, y, f z)
-
 (** {2 The various types} *)
+
+module type IDX = sig
+  type t
+  val with_mark :
+    (int -> 'b -> 'c * 'd * Re.t) -> int -> 'b -> 'c * 'd * t * Re.t
+  val test : Re.Group.t -> t -> bool
+end
+
+module MarkIdx : IDX = struct
+  type t = Re.Mark.t
+  let with_mark f i re =
+    let i, w, re = f i re in
+    let idx, re = Re.mark re in
+    i, w, idx, re
+  let test = Re.Mark.test
+end
+module GroupIdx : IDX = struct
+  type t = int
+  let with_mark f i re =
+    let i', w, re = f (i+1) re in
+    let re = Re.group re in
+    i', w, i, re
+  let test = Re.Group.test
+end
+
+module Idx = MarkIdx
 
 module T = struct
 
@@ -54,8 +78,8 @@ module T = struct
   type _ wit =
     | Lit    : int -> string wit
     | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
-    | Opt    : Re.Mark.t * 'a wit -> 'a option wit
-    | Alt    : Re.Mark.t * 'a wit * 'b wit
+    | Opt    : Idx.t * 'a wit -> 'a option wit
+    | Alt    : Idx.t * 'a wit * Idx.t * 'b wit
       -> [`Left of 'a | `Right of 'b] wit
     | Seq    :
         'a wit * 'b wit -> ('a * 'b) wit
@@ -281,12 +305,12 @@ let rec build
       let i', w, re = build i e in
       i', Conv (w, conv), re
     | Opt e ->
-      let i', w, (id, re) = map_3 mark @@ build i e in
+      let i', w, id, re = Idx.with_mark build i e in
       i', Opt (id,w), opt re
     | Alt (e1,e2) ->
-      let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
-      let i'', w2, re2 = build i' e2 in
-      i'', Alt (id1, w1, w2), alt [re1 ; re2]
+      let i', w1, id1, re1 = Idx.with_mark build i e1 in
+      let i'', w2, id2, re2 = Idx.with_mark build i' e2 in
+      i'', Alt (id1, w1, id2, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
       let i', w, re = build i e in
       let _, _, re_ign = build 1 e_ign in
@@ -321,14 +345,17 @@ let[@specialize] rec extract
       let v = extract ~original w s in
       conv.to_ v
     | Opt (id,w) ->
-      if not @@ Re.Mark.test s id then None
+      if not @@ Idx.test s id then None
       else Some (extract ~original w s)
-    | Alt (i1,w1,w2) ->
-      if Re.Mark.test s i1 then
+    | Alt (i1,w1,i2,w2) ->
+      if Idx.test s i1 then
         `Left (extract ~original w1 s)
-      else
-        (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
+      else if Idx.test s i2 then
         `Right (extract ~original w2 s)
+      else
+        (* If neither matches, it means it's the empty string, we can
+           default to the left *)
+        `Left (extract ~original w1 s)
     | Seq (e1,e2) ->
       let v1 = extract ~original e1 s in
       let v2 = extract ~original e2 s in
@@ -476,7 +503,7 @@ let rec pp_wit
   | Lit i -> sexp ppf "Lit" "%i" i
   | Conv (tre,_) -> sexp ppf "Conv" "%a" pp_wit tre
   | Opt (_, tre) -> sexp ppf "Opt" "%a" pp_wit tre
-  | Alt (_, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | Alt (_, tre1, _, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Rep (i, w, re) -> sexp ppf "Rep" "%i@ %a@ %a" i pp_wit w Re.pp_re re
 
@@ -497,6 +524,7 @@ let pp_error ppf : _ error -> unit = function
     Format.pp_print_string ppf @@ Printexc.to_string exn
 
 module Internal = struct
+  type idx = Idx.t
   include T
 
   let to_t x = x
