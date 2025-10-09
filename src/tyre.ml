@@ -35,6 +35,9 @@ let map_3 f (x,y,z) = (x, y, f z)
 type non_evaluable = NE
 type evaluable = E
 
+let () = ignore NE
+let () = ignore E
+
 module T = struct
 
   type ('a, 'b) conv = {
