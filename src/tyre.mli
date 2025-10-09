@@ -93,27 +93,30 @@ val map : ('a -> 'b) -> (_, 'a) t -> 'b pattern
 (** [map f tyre] is a regexp that matches [tyre] and returns [f v]. It cannot be
   used for evaluating. *)
 
+val app: ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern
+
 val const : 'a -> ('e, unit) t -> ('e, 'a) t
 (** [const v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
 
 val opt : ('e, 'a) t -> ('e, 'a option) t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
 
-val alt : ('e, 'a) t -> ('e, 'b) t -> ('e, [`Left of 'a | `Right of 'b]) t
-(** [alt tyreL tyreR] matches either [tyreL] (and will then return [`Left v]) or [tyreR] (and will then return [`Right v]).
+val either : ('e, 'a) t -> ('e, 'b) t -> ('e,  ('a, 'b) Either.t ) t
+(** [either tyreL tyreR] matches either [tyreL] (and will then return [Left v])
+  or [tyreR] (and will then return [Right v]).
 *)
 
-val alt_flat : (_,'a) t -> (_, 'a) t -> 'a pattern
-(** [alt_flat l r] matches either [l] or [r] and return the value of the one
+val alt : (_,'a) t -> (_, 'a) t -> 'a pattern
+(** [alt l r] matches either [l] or [r] and return the value of the one
     that matched. It is not compatible with [eval], use
-    {!alt_flat_eval} might be used instead.
+    {!alt_either} might be used instead.
 
-    The reason is that when evaluating [alt_flat l r] with a value `v`, `eval`
+    The reason is that when evaluating [alt l r] with a value `v`, `eval`
     has no way to know if the value could have been returned by [l] or by [r].
     *)
 
-val alt_flat_eval : ('a -> [`Left | `Right]) -> ('e, 'a) t -> ('e, 'a) t -> ('e, 'a) t
-(** [alt_flat_eval from_ l r] is [alt_flat l r] but uses [from_] when [eval] is
+val alt_eval : ('a -> [`Left | `Right]) -> ('e, 'a) t -> ('e, 'a) t -> ('e, 'a) t
+(** [alt_eval from_ l r] is [alt l r] but uses [from_] when [eval] is
   called on it. [from_ v] should indicate whether [v] is compatible with [l] or
   with [r].*)
 
@@ -140,14 +143,21 @@ val prefix : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
 val suffix : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
 (** Same as [prefix], but reversed. *)
 
+(** {2 Let operators}*)
+
+val (let+) : ('e, 'a) t -> ('a -> 'b) ->  'b pattern
+(** [let+ x = y in z] is [map (fun x -> z) y]. *)
+
+val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
+(** [(and+) x y] is [seq x y]. *)
 
 (** {2 Infix operators} *)
 
-val (<|>) : ('e, 'a) t -> ('e, 'b) t -> ('e, [`Left of 'a | `Right of 'b]) t
-(** [t <|> t'] is [alt t t']. *)
+val (<||>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a, 'b) Either.t) t
+(** [t <|> t'] is [alt_either t t']. *)
 
-val (<||>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
-(** [t <||> t' ] is [alt_flat t t']. It is not compatible with
+val (<|>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
+(** [t <|> t' ] is [alt t t']. It is not compatible with
     [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
 
 val (<&>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
@@ -161,12 +171,12 @@ val (<* ) : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
 
 module Infix : sig
 
-  val (<|>) : ('e, 'a) t -> ('e, 'b) t -> ('e, [`Left of 'a | `Right of 'b]) t
-  (** [t <|> t'] is [alt t t']. *)
+  val (<||>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a, 'b) Either.t) t
+  (** [t <||> t'] is [either t t']. *)
 
-  val (<||>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
-  (** [t <||> t' ] is [alt_flat t t']. It is not compatible with
-      [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
+  val (<|>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
+  (** [t <|> t' ] is [alt t t']. It is not compatible with
+      [eval], use {!alt_eval} instead if you need to call {!eval}. *)
 
   val (<&>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
   (** [t <&> t'] is [seq t t']. *)
@@ -177,17 +187,18 @@ module Infix : sig
   val (<* ) : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
   (** [ t <* ti ] is [suffix t ti]. *)
 
+  val (<*>) : ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern
+  (** [(<*>)] is {!app} *)
 
+  val (<$>) : ('a -> 'b) -> ('c, 'a) t -> 'b pattern
+  (** [(<$>)] is {!map} *)
 
+  val (let+) : ('e, 'a) t -> ('a -> 'b) -> 'b pattern
+  (** [let+ x = y in z] is [map (fun x -> z) y]. *)
+
+  val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
+  (** [(and+) x y] is [seq x y]. *)
 end
-
-(** {2 Let operators}*)
-
-val (let+) : ('e, 'a) t -> ('a -> 'b) ->  'b pattern
-(** [let+ x = y in z] is [map (fun x -> z) y]. *)
-
-val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
-(** [(and+) x y] is [seq x y]. *)
 
 (** {2 Useful combinators} *)
 
@@ -442,32 +453,30 @@ module Internal : sig
 
   type ('evaluable, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
-    | Regexp   : Re.t * Re.re Lazy.t -> ('e, string) raw
-    | Conv     : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
-    | Map      : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
-    | Opt      : ('e, 'a) raw -> ('e, 'a option) raw
-    | Alt      : ('e, 'a) raw * ('e, 'b) raw -> ('e, [`Left of 'a | `Right of 'b]) raw
-    | Alt_flat : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
-    | Seq      : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a * 'b)) raw
-    | Prefix   : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
-    | Suffix   : ('e, 'a) raw * (_, 'b) raw  -> ('e, 'a) raw
-    | Rep      : ('e, 'a) raw -> ('e, 'a Seq.t) raw
-    | Mod      : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
+    | Regexp : Re.t * Re.re Lazy.t -> ('e, string) raw
+    | Conv   : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
+    | Map    : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Opt    : ('e, 'a) raw -> ('e, 'a option) raw
+    | Either : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a, 'b) Either.t) raw
+    | Alt    : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
+    | Seq    : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a * 'b)) raw
+    | Prefix : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
+    | Suffix : ('e, 'a) raw * (_, 'b) raw  -> ('e, 'a) raw
+    | Rep    : ('e, 'a) raw -> ('e, 'a Seq.t) raw
+    | Mod    : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
 
   val from_t : ('e, 'a) t -> ('e, 'a) raw
   val to_t : ('e, 'a) raw -> ('e, 'a) t
 
   type _ wit =
-    | Lit      : int -> string wit
-    | Conv     : 'a wit * ('a, 'b) conv -> 'b wit
-    | Map      : 'a wit * ('a -> 'b) -> 'b wit
-    | Opt      : Re.Mark.t * 'a wit -> 'a option wit
-    | Alt      : Re.Mark.t * 'a wit * 'b wit
-      -> [`Left of 'a | `Right of 'b] wit
-    | Alt_flat : Re.Mark.t * 'a wit * 'a wit -> 'a wit
-    | Seq      :
-        'a wit * 'b wit -> ('a * 'b) wit
-    | Rep     : int * 'a wit * Re.re -> 'a Seq.t wit
+    | Lit    : int -> string wit
+    | Conv   : 'a wit * ('a, 'b) conv -> 'b wit
+    | Map    : 'a wit * ('a -> 'b) -> 'b wit
+    | Opt    : Re.Mark.t * 'a wit -> 'a option wit
+    | Either : Re.Mark.t * 'a wit * 'b wit -> ('a, 'b) Either.t wit
+    | Alt    : Re.Mark.t * 'a wit * 'a wit -> 'a wit
+    | Seq    : 'a wit * 'b wit -> ('a * 'b) wit
+    | Rep    : int * 'a wit * Re.re -> 'a Seq.t wit
 
   val build : int -> (_, 'a) raw -> int * 'a wit * Re.t
   val extract : original:string -> 'a wit -> Re.Group.t -> 'a

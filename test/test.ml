@@ -4,15 +4,15 @@ module A = struct
       (type a) (type b)
       (module M1 : TESTABLE with type t = a)
       (module M2 : TESTABLE with type t = b)
-    : (module TESTABLE with type t = [`Left of M1.t | `Right of M2.t])
+    : (module TESTABLE with type t = (M1.t, M2.t) Either.t)
     = (module struct
-    type t = [`Left of M1.t | `Right of M2.t]
+    type t = (M1.t, M2.t) Either.t
     let pp ppf = function
-      | `Left x -> M1.pp ppf x
-      | `Right x -> M2.pp ppf x
+      | Either.Left x -> M1.pp ppf x
+      | Right x -> M2.pp ppf x
     let equal x y = match x, y with
-      | `Left x, `Left y -> M1.equal x y
-      | `Right x, `Right y -> M2.equal x y
+      | Either.Left x, Either.Left y -> M1.equal x y
+      | Right x, Right y -> M2.equal x y
       | _ -> false
   end)
 
@@ -142,13 +142,13 @@ let composed = [
     [1;254;3;54;] "1;254;3;54;" ;
   t "separated list" A.(list int) (separated_list ~sep:(char ';') int)
     [1;254;3;54] "1;254;3;54" ;
-  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <|> regex Re.alpha))
-    [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c" ;
+  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <||> regex Re.alpha))
+    [Either.Left "1"; Right "a"; Left "2"; Left "5"; Right "c"] "1a25c" ;
   t "list of list"
     A.(list @@ list @@ choice int string)
-    (list @@ str"@" *> list (pos_int <|> regex Re.alpha))
-    [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33";
-  t_pat "alt flat" A.(list @@ string) (list (regex Re.digit <||> regex Re.alpha))
+    (list @@ str"@" *> list (pos_int <||> regex Re.alpha))
+    [[Left 1; Right "a"]; [Right "c"] ; [Right "d"; Left 33]] "@1a@c@d33";
+  t_pat "alt" A.(list @@ string) (list (regex Re.digit <|> regex Re.alpha))
     ["1"; "a"; "2"; "5"; "c"] "1a25c";
   t_pat "map" A.(list @@ int) (list (map Char.code any))
     [49; 97; 50; 53; 99] "1a25c"
@@ -158,11 +158,11 @@ let composed = [
 let marks =
   let t ?all s =
     t ?all s A.(choice (option string) (option string))
-      (opt @@ pcre "a" <|> opt @@ pcre "b")
+      (opt @@ pcre "a" <||> opt @@ pcre "b")
   in [
-    t "alt option left" (`Left (Some "a")) "a" ;
-    t "alt option rigth" (`Right (Some "b")) "b" ;
-    t ~all:false "alt option none" (`Left None) "" ;
+    t "either option left" (Left (Some "a")) "a" ;
+    t "either option rigth" (Right (Some "b")) "b" ;
+    t ~all:false "alt option none" (Left None) "" ;
   ]
 
 let nomatch = [
@@ -175,8 +175,8 @@ let nomatch = [
 
 let conv_failure = [
   convfail "char" A.unit cfail "x";
-  convfail "alt" A.(choice unit int) (cfail <|> int) "x" ;
-  t "alt2" A.(choice int unit) (int <|> cfail) (`Left 2) "2" ;
+  convfail "either" A.(choice unit int) (cfail <||> int) "x" ;
+  t "either2" A.(choice int unit) (int <||> cfail) (Left 2) "2" ;
   convfail "prefix" A.unit (str "foo" *> cfail) "fooy" ;
   t "prefix2" A.unit (cfail *> str "foo") () "\000foo" ;
 ]

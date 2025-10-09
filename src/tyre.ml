@@ -45,25 +45,25 @@ module T = struct
   type ('evaluable, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> ('e, string) raw
-    | Conv     : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
-    | Map      : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
-    | Opt      : ('e, 'a) raw -> ('e, 'a option) raw
-    | Alt      : ('e, 'a) raw * ('e, 'b) raw -> ('e, [`Left of 'a | `Right of 'b]) raw
-    | Alt_flat : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
-    | Seq      : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a * 'b)) raw
-    | Prefix   : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
-    | Suffix   : ('e, 'a) raw * (_, 'b) raw  -> ('e, 'a) raw
-    | Rep      : ('e, 'a) raw -> ('e, 'a Seq.t) raw
-    | Mod      : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
+    | Conv   : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
+    | Map    : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Opt    : ('e, 'a) raw -> ('e, 'a option) raw
+    | Either : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a, 'b) Either.t) raw
+    | Alt    : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
+    | Seq    : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a * 'b)) raw
+    | Prefix : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
+    | Suffix : ('e, 'a) raw * (_, 'b) raw  -> ('e, 'a) raw
+    | Rep    : ('e, 'a) raw -> ('e, 'a Seq.t) raw
+    | Mod    : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
 
   type _ wit =
     | Lit      : int -> string wit
     | Conv     : 'a wit * ('a, 'b) conv -> 'b wit
     | Map      : 'a wit * ('a -> 'b) -> 'b wit
     | Opt      : Re.Mark.t * 'a wit -> 'a option wit
-    | Alt      : Re.Mark.t * 'a wit * 'b wit
-      -> [`Left of 'a | `Right of 'b] wit
-    | Alt_flat : Re.Mark.t * 'a wit * 'a wit
+    | Either      : Re.Mark.t * 'a wit * 'b wit
+      -> ('a, 'b) Either.t wit
+    | Alt : Re.Mark.t * 'a wit * 'a wit
       -> 'a wit
     | Seq      :
         'a wit * 'b wit -> ('a * 'b) wit
@@ -81,7 +81,7 @@ let rec unlift: type a. a expression -> a pattern = function
 | Regexp (a, b) -> Regexp (a, b)
 | Conv (a,b)  -> Conv (unlift a, b)
 | Opt a ->  Opt (unlift a)
-| Alt (a,b) ->  Alt (unlift a, unlift b)
+| Either (a,b) ->  Either (unlift a, unlift b)
 | Seq (a, b)   ->  Seq (unlift a, unlift b)
 | Prefix (a, b) ->  Prefix (a, unlift b)
 | Suffix (a,b) ->  Suffix (unlift a,b)
@@ -107,15 +107,19 @@ let const v x =
   conv (fun () -> v) (fun _ -> ()) x
 
 let seq a b : _ t = Seq (a, b)
-let alt a b : _ t = Alt (a, b)
 
-let alt_flat tyre1 tyre2 : _ t = Alt_flat (tyre1, tyre2)
+let app f a =
+  map (fun (f, a) -> f a) (seq f a )
 
-let alt_flat_eval : type e a. (a -> [`Left | `Right]) -> (e, a) t -> (e, a) t -> (e, a) t = fun from_ l r ->
+let either a b : _ t = Either (a, b)
+
+let alt tyre1 tyre2 : _ t = Alt (tyre1, tyre2)
+
+let alt_eval : type e a. (a -> [`Left | `Right]) -> (e, a) t -> (e, a) t -> (e, a) t = fun from_ l r ->
   conv
-    (function `Left a -> a | `Right a -> a)
-    (fun a -> match from_ a with `Left -> `Left a | `Right -> `Right a)
-    (alt l r)
+    Either.(function Left a -> a | Right a -> a)
+    (fun a -> match from_ a with `Left -> Left a | `Right -> Right a)
+    (either l r)
 
 let prefix x a : _ t = Prefix (x, a)
 let suffix a x : _ t = Suffix (a, x)
@@ -129,13 +133,19 @@ module Infix = struct
   let ( *>) = prefix
   let (<* ) = suffix
 
-  let ( <||> ) = alt_flat
+  let ( <||> ) = either
+
+  let (<*>) = app
+
+  let (<$>) = map
+
+  let (let+) x f = map f x
+  let (and+) x y = seq x y
 
 end
 include Infix
 
-let (let+) x f = map f x
-let (and+) x y = seq x y
+
 
 let rep x : _ t = Rep x
 let rep1 x = x <&> rep x
@@ -292,8 +302,8 @@ let rec witnesspp
     | Conv (tre, _) -> witnesspp ppf tre
     | Map (tre, _) -> witnesspp ppf tre
     | Opt _ -> ()
+    | Either (tre1, _) -> witnesspp ppf tre1
     | Alt (tre1, _) -> witnesspp ppf tre1
-    | Alt_flat (tre1, _) -> witnesspp ppf tre1
     | Seq (tre1, tre2) ->
       witnesspp ppf tre1 ;
       witnesspp ppf tre2
@@ -337,9 +347,9 @@ let rec evalpp
       fun v -> witnesspp ppf tre_l ; evalpp tre ppf v
     | Suffix(tre,tre_g) ->
       fun v -> evalpp tre ppf v ; witnesspp ppf tre_g
-    | Alt (treL, treR) -> begin function
-        | `Left x -> evalpp treL ppf x
-        | `Right x -> evalpp treR ppf x
+    | Either (treL, treR) -> begin function
+        | Left x -> evalpp treL ppf x
+        | Right x -> evalpp treR ppf x
       end
     | Rep tre ->
       pprep (evalpp tre) ppf
@@ -373,14 +383,14 @@ let rec build
     | Opt e ->
       let i', w, (id, re) = map_3 mark @@ build i e in
       i', Opt (id,w), opt re
+    | Either (e1,e2) ->
+      let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
+      let i'', w2, re2 = build i' e2 in
+      i'', Either (id1, w1, w2), alt [re1 ; re2]
     | Alt (e1,e2) ->
       let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
       let i'', w2, re2 = build i' e2 in
       i'', Alt (id1, w1, w2), alt [re1 ; re2]
-    | Alt_flat (e1,e2) ->
-      let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
-      let i'', w2, re2 = build i' e2 in
-      i'', Alt_flat (id1, w1, w2), alt [re1 ; re2]
     | Prefix (e_ign,e) ->
       let i', w, re = build i e in
       let _, _, re_ign = build 1 e_ign in
@@ -420,13 +430,13 @@ let[@specialize] rec extract
     | Opt (id,w) ->
       if not @@ Re.Mark.test s id then None
       else Some (extract ~original w s)
-    | Alt (i1,w1,w2) ->
+    | Either (i1,w1,w2) ->
       if Re.Mark.test s i1 then
-        `Left (extract ~original w1 s)
+        Either.Left (extract ~original w1 s)
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
-        `Right (extract ~original w2 s)
-    | Alt_flat (i1,w1,w2) ->
+        Right (extract ~original w2 s)
+    | Alt (i1,w1,w2) ->
       if Re.Mark.test s i1 then
         (extract ~original w1 s)
       else
@@ -565,8 +575,8 @@ let rec pp
   | Conv (tre,_) -> sexp ppf "Conv" "%a" pp tre
   | Map (tre,_) -> sexp ppf "Map" "%a" pp tre
   | Opt tre -> sexp ppf "Opt" "%a" pp tre
+  | Either (tre1, tre2) -> sexp ppf "Either" "%a@ %a" pp tre1 pp tre2
   | Alt (tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp tre1 pp tre2
-  | Alt_flat (tre1, tre2) -> sexp ppf "Alt_flat" "%a@ %a" pp tre1 pp tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp tre1 pp tre2
   | Prefix (tre1, tre2) ->
     sexp ppf "Prefix" "%a@ %a" pp tre1 pp tre2
@@ -582,8 +592,8 @@ let rec pp_wit
   | Conv (tre,_) -> sexp ppf "Conv" "%a" pp_wit tre
   | Map (tre,_) -> sexp ppf "Map" "%a" pp_wit tre
   | Opt (_, tre) -> sexp ppf "Opt" "%a" pp_wit tre
-  | Alt (_, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
-  | Alt_flat (_, tre1, tre2) -> sexp ppf "Alt_flat" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | Either (_, tre1, tre2) -> sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | Alt (_, tre1, tre2) -> sexp ppf "Alt_flat" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Seq (tre1 ,tre2) -> sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
   | Rep (i, w, re) -> sexp ppf "Rep" "%i@ %a@ %a" i pp_wit w Re.pp_re re
 
