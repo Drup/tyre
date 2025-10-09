@@ -32,8 +32,8 @@ let map_3 f (x,y,z) = (x, y, f z)
 
 (** {2 The various types} *)
 
-type non_evaluable
-type evaluable
+type non_evaluable = NE
+type evaluable = E
 
 module T = struct
 
