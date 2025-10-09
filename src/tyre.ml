@@ -80,16 +80,16 @@ type 'a expression = (evaluable, 'a) t
 
 (* TODO: don't reallocate everything. This is the identity, except the whole
 tree has to be walked. *)
-let rec unlift: type a. a expression -> a pattern = function
+let rec _unlift_proof: type a. a expression -> a pattern = function
 | Regexp (a, b) -> Regexp (a, b)
-| Conv (a,b)  -> Conv (unlift a, b)
-| Opt a ->  Opt (unlift a)
-| Either (a,b) ->  Either (unlift a, unlift b)
-| Seq (a, b)   ->  Seq (unlift a, unlift b)
-| Prefix (a, b) ->  Prefix (a, unlift b)
-| Suffix (a,b) ->  Suffix (unlift a,b)
-| Rep a   ->  Rep (unlift a)
-| Mod  (a,b)  ->  Mod  (a, unlift b)
+| Conv (a,b)  -> Conv (_unlift_proof a, b)
+| Opt a ->  Opt (_unlift_proof a)
+| Either (a,b) ->  Either (_unlift_proof a, _unlift_proof b)
+| Seq (a, b)   ->  Seq (_unlift_proof a, _unlift_proof b)
+| Prefix (a, b) ->  Prefix (a, _unlift_proof b)
+| Suffix (a,b) ->  Suffix (_unlift_proof a,b)
+| Rep a   ->  Rep (_unlift_proof a)
+| Mod  (a,b)  ->  Mod  (a, _unlift_proof b)
 
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
@@ -105,6 +105,8 @@ let conv to_ from_ x : _ t =
   Conv (x, {to_; from_})
 
 let map f x : _ t = Map (x, f)
+
+let unlift t = map Fun.id t
 
 let const v x =
   conv (fun () -> v) (fun _ -> ()) x
