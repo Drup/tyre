@@ -191,6 +191,93 @@ val terminated_list : sep:_ t -> 'a t -> 'a list t
 val separated_list : sep:_ t -> 'a t -> 'a list t
 (** [separated_list ~sep tyre] is equivalent to [opt (e <&> list (sep *> e))]. *)
 
+module Charset: sig
+  (** {2 Sets of characters}
+    Sets of characters support more operations than regular regexps, as you can
+    diff them, so they have a specific type that allows these operations.
+
+    To convert to a regular [Tyre.t], use {!charset}. *)
+
+  type t
+  (** A set of characters. *)
+
+  val not: t -> t
+  (** [not s] is [any - s]*)
+
+  val union: t list -> t
+  val inter: t list -> t
+  val diff: t -> t -> t
+
+  val compl : t list -> t
+  (** [compl sets] is [not (union sets)] *)
+
+  val ( || ) : t -> t -> t
+  (** [a || b] is [union [a; b]]*)
+
+  val (&&) : t -> t -> t
+  (** [a && b] is [inter [a; b]]*)
+
+  val ( - ) : t -> t -> t
+  (** [a - b] is [diff a b]*)
+
+  val char : char -> t
+  (** The singleton set *)
+
+  val range : char -> char -> t
+
+  val set : string -> t
+  (** any character in the string *)
+
+  (** {3 Predefined character sets}
+      The exact characters matched are not documented in [Re], if you want specifics
+      you have to read the source: https://ocaml.org/p/re/latest/doc/src/re/cset.ml.html .
+  *)
+
+  val any: t
+  val notnl: t
+  val wordc : t
+  val alpha : t
+  val ascii : t
+  val blank : t
+  val cntrl : t
+  val digit : t
+  val graph : t
+  val lower : t
+  val print : t
+  val punct : t
+  val space : t
+  val upper : t
+  val xdigit : t
+end
+
+val charset : Charset.t -> char t
+(** [charset cs] is a regular expression that matches any character in [cs]. *)
+
+(** {2 Predefined character sets as [Tyre.t]} *)
+
+val any: char t
+val notnl: char t
+val wordc : char t
+val alpha : char t
+val ascii : char t
+val blank : char t
+val cntrl : char t
+
+val digit : char t
+(** There are combinators for {!int}s and {!float}s, using them is advisable. *)
+
+val graph : char t
+val lower : char t
+val print : char t
+val punct : char t
+val space : char t
+val upper : char t
+val xdigit : char t
+
+val any_string : string t
+(** matches the same strings as [rep any] but returns the matched string instead
+  of a list of chars. *)
+
 (** {2 Other combinators}
 
     See {!Re} for details on the semantics of those combinators. *)

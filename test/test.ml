@@ -99,6 +99,15 @@ let basics = [
   t "int seq" A.(pair int bool) (int <&> bool) (3,true) "3true" ;
 ]
 
+let charset = [
+  t "any" A.char (charset Charset.any) 'a' "a" ;
+  t "char" A.char (charset Charset.(char 'a')) 'a' "a" ;
+  nomatch "not nomatch" A.char (charset Charset.(not (char 'a') )) "a" ;
+  t "not match" A.char (charset Charset.(not (char 'a') )) 'b' "b" ;
+  t "union" A.char (charset Charset.((char 'a') || range 'c' 'e' )) 'd' "d" ;
+  t "range" A.char (charset Charset.(range 'a' 'z')) 'c' "c" ;
+]
+
 let notwhole = [
   topt' "int option" A.int (opt int) 3 "3" "" ;
   t' "separated list" A.(list int) (separated_list ~sep:(char ',') int) [4;4;4] "4,4,4" ;
@@ -158,6 +167,7 @@ let conv_failure = [
   t "prefix2" A.unit (cfail *> str "foo") () "\000foo" ;
 ]
 
+
 let routes =
   let fixed n = regex Re.(repn any n (Some n)) in
   let f n x = n, x in
@@ -200,6 +210,7 @@ let replace_test = [
 
 let () = Alcotest.run "tyre" [
     "basics", basics ;
+    "charset", charset ;
     "not whole", notwhole ;
     "prefix suffix", prefix_suffix ;
     "composed", composed ;
