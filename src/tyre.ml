@@ -78,8 +78,6 @@ type ('e, 'a) t = ('e, 'a) T.raw
 type 'a pattern = (non_evaluable, 'a) t
 type 'a expression = (evaluable, 'a) t
 
-(* TODO: don't reallocate everything. This is the identity, except the whole
-tree has to be walked. *)
 let rec _unlift_proof: type a. a expression -> a pattern = function
 | Regexp (a, b) -> Regexp (a, b)
 | Conv (a,b)  -> Conv (_unlift_proof a, b)

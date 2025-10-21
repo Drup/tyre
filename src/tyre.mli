@@ -158,7 +158,7 @@ val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
 (** {2 Infix operators} *)
 
 val (<||>) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a, 'b) Either.t) t
-(** [t <|> t'] is [alt_either t t']. *)
+(** [t <||> t'] is [alt_either t t']. *)
 
 val (<|>) : (_, 'a) t -> (_, 'a) t -> 'a pattern
 (** [t <|> t' ] is [alt t t']. It is not compatible with
