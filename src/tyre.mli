@@ -145,11 +145,15 @@ val suffix : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
 
 (** {2 Let operators}*)
 
-val (let+) : ('e, 'a) t -> ('a -> 'b) ->  'b pattern
+val (let+) : ('e, 'a) t -> ('a -> 'b) -> 'b pattern
 (** [let+ x = y in z] is [map (fun x -> z) y]. *)
 
 val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
-(** [(and+) x y] is [seq x y]. *)
+(** [(and+) x y] is [seq x y].
+
+    Be warned that this is not an applicative functor:
+    [let+ x = t1 and+ y = t2 in z] is not the same as
+    [let+ y = t2 and+ x = t1 in z]. *)
 
 (** {2 Infix operators} *)
 
@@ -197,7 +201,11 @@ module Infix : sig
   (** [let+ x = y in z] is [map (fun x -> z) y]. *)
 
   val (and+) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a * 'b)) t
-  (** [(and+) x y] is [seq x y]. *)
+  (** [(and+) x y] is [seq x y].
+
+      Be warned that this is not an applicative functor:
+      [let+ x = t1 and+ y = t2 in z] is not the same as
+      [let+ y = t2 and+ x = t1 in z]. *)
 end
 
 (** {2 Useful combinators} *)

@@ -107,6 +107,10 @@ let basics = [
 
   topt "int option" A.int (opt int) 3 "3" "" ;
   t "int seq" A.(pair int bool) (int <&> bool) (3,true) "3true" ;
+  t_pat "int letop"
+    A.(pair int bool)
+    (let+ i = int and+ b = bool in (i, b))
+    (3,true) "3true" ;
 ]
 
 let charset = [
