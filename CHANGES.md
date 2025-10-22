@@ -1,6 +1,16 @@
 # Unreleased
 
 * Introduce charsets: contrary to `Re`, they have a different type from regex.
+* Type the difference between regexps that can be evaluated reversed and the
+  ones that cannot: `(evaluable, 'a) Tyre.t` and `(non_evaluable, 'a) Tyre.t`.
+* Introduce alias expression for `(evaluable, 'a) Tyre.t` and alias pattern for
+  `(non_evaluable, 'a) Tyre.t`.
+* Introduce `val either: ('e, 'a) Tyre.t -> ('e, 'b) Tyre.t -> ('e, ('a, 'b) Either.t) Tyre.t`.
+* Introduce `val map : ('a -> 'b) -> (_, 'a) t -> 'b pattern` and its
+  corresponding operators: `let+` and `<$>`.
+* Introduce `(and+)` which is an alias of `seq`.
+* Introduce `val app: ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern` and its
+  corresponding operator `<*>`
 
 # 0.5 (24 January 2020)
 
