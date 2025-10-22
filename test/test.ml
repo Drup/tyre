@@ -4,15 +4,15 @@ module A = struct
       (type a) (type b)
       (module M1 : TESTABLE with type t = a)
       (module M2 : TESTABLE with type t = b)
-    : (module TESTABLE with type t = [`Left of M1.t | `Right of M2.t])
+    : (module TESTABLE with type t = (M1.t, M2.t) Either.t)
     = (module struct
-    type t = [`Left of M1.t | `Right of M2.t]
+    type t = (M1.t, M2.t) Either.t
     let pp ppf = function
-      | `Left x -> M1.pp ppf x
-      | `Right x -> M2.pp ppf x
+      | Either.Left x -> M1.pp ppf x
+      | Right x -> M2.pp ppf x
     let equal x y = match x, y with
-      | `Left x, `Left y -> M1.equal x y
-      | `Right x, `Right y -> M2.equal x y
+      | Either.Left x, Either.Left y -> M1.equal x y
+      | Right x, Right y -> M2.equal x y
       | _ -> false
   end)
 
@@ -25,7 +25,7 @@ end
 
 open Tyre
 exception ConvFail
-let cfail : unit t =
+let cfail : (_, unit) t =
   conv (fun _ -> raise ConvFail) (fun _ -> raise ConvFail) (regex Re.any)
 
 let test_fail title desc cre s error b =
@@ -57,6 +57,11 @@ let test title desc cre re v s =
   A.(check bool) (title^" execp") (Tyre.execp cre s) true ;
   A.(check string) (title^" eval") s (Tyre.eval re v)
 
+let test_pattern title desc cre v s =
+  A.(check @@ tyre desc)
+    (title^" exec") (Tyre.exec cre s) (Result.Ok v) ;
+  A.(check bool) (title^" execp") (Tyre.execp cre s) true
+
 let test_all title desc cre re l s =
   A.(check @@ tyre @@ list desc)
     (title^" all") (Tyre.all cre s) (Result.Ok l) ;
@@ -67,6 +72,11 @@ let t' ?(all=true) title desc re v s =
     let cre = Tyre.compile re in
     test title desc cre re v s ;
     if all then test_all title desc cre re [v] s
+
+let t_pat title desc re v s =
+  title, `Quick, fun () ->
+    let cre = Tyre.compile re in
+    test_pattern title desc cre v s
 
 let t ?all title desc re v s =
   t' ?all title desc (Tyre.whole_string re) v s
@@ -97,6 +107,10 @@ let basics = [
 
   topt "int option" A.int (opt int) 3 "3" "" ;
   t "int seq" A.(pair int bool) (int <&> bool) (3,true) "3true" ;
+  t_pat "int letop"
+    A.(pair int bool)
+    (let+ i = int and+ b = bool in (i, b))
+    (3,true) "3true" ;
 ]
 
 let charset = [
@@ -132,23 +146,27 @@ let composed = [
     [1;254;3;54;] "1;254;3;54;" ;
   t "separated list" A.(list int) (separated_list ~sep:(char ';') int)
     [1;254;3;54] "1;254;3;54" ;
-  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <|> regex Re.alpha))
-    [`Left "1";`Right "a"; `Left "2"; `Left "5"; `Right "c"] "1a25c" ;
+  t "alt list" A.(list @@ choice string string) (list (regex Re.digit <||> regex Re.alpha))
+    [Either.Left "1"; Right "a"; Left "2"; Left "5"; Right "c"] "1a25c" ;
   t "list of list"
     A.(list @@ list @@ choice int string)
-    (list @@ str"@" *> list (pos_int <|> regex Re.alpha))
-    [[`Left 1;`Right "a"]; [`Right "c"] ; [`Right "d";`Left 33]] "@1a@c@d33"
+    (list @@ str"@" *> list (pos_int <||> regex Re.alpha))
+    [[Left 1; Right "a"]; [Right "c"] ; [Right "d"; Left 33]] "@1a@c@d33";
+  t_pat "alt" A.(list @@ string) (list (regex Re.digit <|> regex Re.alpha))
+    ["1"; "a"; "2"; "5"; "c"] "1a25c";
+  t_pat "map" A.(list @@ int) (list (map Char.code any))
+    [49; 97; 50; 53; 99] "1a25c"
 ]
 
 
 let marks =
   let t ?all s =
     t ?all s A.(choice (option string) (option string))
-      (opt @@ pcre "a" <|> opt @@ pcre "b")
+      (opt @@ pcre "a" <||> opt @@ pcre "b")
   in [
-    t "alt option left" (`Left (Some "a")) "a" ;
-    t "alt option rigth" (`Right (Some "b")) "b" ;
-    t ~all:false "alt option none" (`Left None) "" ;
+    t "either option left" (Left (Some "a")) "a" ;
+    t "either option rigth" (Right (Some "b")) "b" ;
+    t ~all:false "alt option none" (Left None) "" ;
   ]
 
 let nomatch = [
@@ -161,8 +179,8 @@ let nomatch = [
 
 let conv_failure = [
   convfail "char" A.unit cfail "x";
-  convfail "alt" A.(choice unit int) (cfail <|> int) "x" ;
-  t "alt2" A.(choice int unit) (int <|> cfail) (`Left 2) "2" ;
+  convfail "either" A.(choice unit int) (cfail <||> int) "x" ;
+  t "either2" A.(choice int unit) (int <||> cfail) (Left 2) "2" ;
   convfail "prefix" A.unit (str "foo" *> cfail) "fooy" ;
   t "prefix2" A.unit (cfail *> str "foo") () "\000foo" ;
 ]

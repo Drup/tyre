@@ -4,10 +4,10 @@
     <&> is the sequence operator. *> is the prefix operator.
    This typed regular expression will return a pair of positive integers.
 *)
-let dim : (int * int) Tyre.t = Tyre.( pos_int <&> str"x" *> pos_int )
+let dim : (int * int) Tyre.expression = Tyre.( pos_int <&> str"x" *> pos_int )
 
 (* We can keep composing! *)
-let prefixed_dim : (int * int) Tyre.t = Tyre.(str"dim:" *> dim)
+let prefixed_dim : (int * int) Tyre.expression = Tyre.(str"dim:" *> dim)
 
 (* Before using it, we need to compile it *)
 let dim_re = Tyre.compile prefixed_dim
@@ -26,7 +26,7 @@ let () =
 (* Pairs are fine, but we want pretty types.
    We can use converters to transform the value. *)
 type dim = { x : int ; y : int }
-let nice_dim : dim Tyre.t =
+let nice_dim : dim Tyre.expression =
   Tyre.conv
     (fun (x,y) -> { x ; y })
     (fun {x;y} -> (x,y)) (* We provide the backward transformation to unparse *)
@@ -37,7 +37,7 @@ let nice_dim : dim Tyre.t =
 
    The <* and *> operators allow to suffix and prefix with a regex.
 *)
-let list_of_dims : dim list Tyre.t =
+let list_of_dims : dim list Tyre.expression =
   let sep = Tyre.( blanks *> char ';' <* blanks )in
   Tyre.( str"dims:" *> terminated_list ~sep nice_dim )
 
