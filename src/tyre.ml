@@ -52,6 +52,7 @@ module T = struct
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
+    | Matched_string : (_, 'a) raw -> ('e, string) raw
 
   type _ wit =
     | Lit : int -> string wit
@@ -80,6 +81,9 @@ let pcre s = regex @@ Re.Pcre.re s
 
    The exception matching of converters is handled by {!Tyre.exec} directly.
 *)
+
+let matched_string t : string pattern = Matched_string t
+
 let conv to_ from_ x : _ t = Conv (x, {to_; from_})
 
 let map f x : _ t = Map (x, f)
@@ -336,6 +340,8 @@ let rec witnesspp : type e a. Format.formatter -> (e, a) t -> unit =
       ()
   | Mod (_, tre) ->
       witnesspp ppf tre
+  | Matched_string tre ->
+      witnesspp ppf tre
 
 (** {2 Evaluation functions} *)
 
@@ -380,6 +386,8 @@ let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
       invalid_arg "Alt is not compatible with eval. This should never happen."
   | Map _ ->
       invalid_arg "Map is not compatible with eval. This should never happen."
+  | Matched_string _ ->
+      invalid_arg "Matched_string is not compatible with eval. This should never happen."
 
 let eval tre = Format.asprintf "%a" (evalpp tre)
 
@@ -394,6 +402,7 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
     to be able to guess the branch matched.
 *)
 
+(** {3 Extraction.} *)
 let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
   let open! Re in
   let open T in
@@ -435,8 +444,9 @@ let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
     | Mod (f, e) ->
         let i', w, re = build i e in
         (i', w, f re)
-
-(** {3 Extraction.} *)
+    | Matched_string e ->
+        let _, _, re = build i e in
+        (i + 1, Lit i, group @@ no_group re)
 
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
@@ -614,6 +624,8 @@ let rec pp : type e a. _ -> (e, a) t -> unit =
       sexp ppf "Rep" "%a" pp tre
   | Mod (_, tre) ->
       sexp ppf "Mod" "%a" pp tre
+  | tre ->
+      sexp ppf "Matched_string" "%a" pp tre
 
 let rec pp_wit : type a. _ -> a T.wit -> unit =
  fun ppf ->
