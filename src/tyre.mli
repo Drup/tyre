@@ -74,6 +74,9 @@ val regex : Re.t -> string expression
     Groups inside [re] are erased.
 *)
 
+val matched_string : ('e, 'a) t -> ('e, string) t
+(** [matched_string t] matches the same strings as [t], but returns  *)
+
 val conv : ('a -> 'b) -> ('b -> 'a) -> 'a expression -> 'b expression
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
@@ -502,6 +505,7 @@ module Internal : sig
     | Regexp : Re.t * Re.re Lazy.t -> ('e, string) raw
     | Conv : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
     | Map : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Matched_string : ('e, 'a) raw * 'a re Lazy.t -> ('e, string) raw
     | Opt : ('e, 'a) raw -> ('e, 'a option) raw
     | Either : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a, 'b) Either.t) raw
     | Alt : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
@@ -516,14 +520,14 @@ module Internal : sig
   val to_t : ('e, 'a) raw -> ('e, 'a) t
 
   type _ wit =
-    | Lit : int -> string wit
-    | Conv : 'a wit * ('a, 'b) conv -> 'b wit
-    | Map : 'a wit * ('a -> 'b) -> 'b wit
-    | Opt : Re.Mark.t * 'a wit -> 'a option wit
-    | Either : Re.Mark.t * 'a wit * 'b wit -> ('a, 'b) Either.t wit
-    | Alt : Re.Mark.t * 'a wit * 'a wit -> 'a wit
-    | Seq : 'a wit * 'b wit -> ('a * 'b) wit
-    | Rep : int * 'a wit * Re.re -> 'a Seq.t wit
+    | WLit : int -> string wit
+    | WConv : 'a wit * ('a, 'b) conv -> 'b wit
+    | WMap : 'a wit * ('a -> 'b) -> 'b wit
+    | WOpt : Re.Mark.t * 'a wit -> 'a option wit
+    | WEither : Re.Mark.t * 'a wit * 'b wit -> ('a, 'b) Either.t wit
+    | WAlt : Re.Mark.t * 'a wit * 'a wit -> 'a wit
+    | WSeq : 'a wit * 'b wit -> ('a * 'b) wit
+    | WRep : int * 'a wit * Re.re -> 'a Seq.t wit
 
   val build : int -> (_, 'a) raw -> int * 'a wit * Re.t
 

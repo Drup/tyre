@@ -68,12 +68,12 @@ let convfail title desc re s =
           ignore @@ Tyre.all_seq cre s () ) )
 
 let test title desc cre re v s =
-  A.(check @@ tyre desc) (title ^ " exec") (Tyre.exec cre s) (Result.Ok v) ;
-  A.(check bool) (title ^ " execp") (Tyre.execp cre s) true ;
+  A.(check @@ tyre desc) (title ^ " exec") (Result.Ok v) (Tyre.exec cre s) ;
+  A.(check bool) (title ^ " execp") true (Tyre.execp cre s) ;
   A.(check string) (title ^ " eval") s (Tyre.eval re v)
 
 let test_pattern title desc cre v s =
-  A.(check @@ tyre desc) (title ^ " exec") (Tyre.exec cre s) (Result.Ok v) ;
+  A.(check @@ tyre desc) (title ^ " exec") (Result.Ok v) (Tyre.exec cre s) ;
   A.(check bool) (title ^ " execp") (Tyre.execp cre s) true
 
 let test_all title desc cre re l s =
@@ -156,6 +156,15 @@ let prefix_suffix =
       A.(pair bool int)
       (str "foo" *> bool <&> int)
       (true, 4) "footrue4" ]
+
+let matched_string =
+  [ t "int" A.string (matched_string int) "33" "33"
+  ;  t "prefix suffix tuple" A.string
+      (str "abc" *> matched_string (bool <&> int) <* bool)
+      "false123" "abcfalse123true"
+  ; t "prefix suffix" A.string
+      (str "abc" *> matched_string (bool *> int) <* bool)
+      "false123" "abcfalse123true" ]
 
 let composed =
   [ topt "option prefix" A.int (opt int <* str "foo") 3 "3foo" "foo"
@@ -251,6 +260,7 @@ let () =
     ; ("charset", charset)
     ; ("not whole", notwhole)
     ; ("prefix suffix", prefix_suffix)
+    ; ("matched_string", matched_string)
     ; ("composed", composed)
     ; ("marks", marks)
     ; ("routes", route_test)

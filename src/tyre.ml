@@ -48,6 +48,7 @@ module T = struct
     | Regexp : Re.t * Re.re Lazy.t -> ('e, string) raw
     | Conv : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
     | Map : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Matched_string : ('e, 'a) raw * 'a re Lazy.t -> ('e, string) raw
     | Opt : ('e, 'a) raw -> ('e, 'a option) raw
     | Either : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a, 'b) Either.t) raw
     | Alt : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
@@ -57,18 +58,26 @@ module T = struct
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
 
-  type _ wit =
-    | Lit : int -> string wit
-    | Conv : 'a wit * ('a, 'b) conv -> 'b wit
-    | Map : 'a wit * ('a -> 'b) -> 'b wit
-    | Opt : Re.Mark.t * 'a wit -> 'a option wit
-    | Either : Re.Mark.t * 'a wit * 'b wit -> ('a, 'b) Either.t wit
-    | Alt : Re.Mark.t * 'a wit * 'a wit -> 'a wit
-    | Seq : 'a wit * 'b wit -> ('a * 'b) wit
-    | Rep : int * 'a wit * Re.re -> 'a Seq.t wit
+  and 'a re = {info: 'a info; cre: Re.re}
+
+  and 'r info = One of 'r wit | Routes of 'r wit_route list
+
+  and 'r wit_route = WRoute : Re.Mark.t * 'a wit * ('a -> 'r) -> 'r wit_route
+
+  and _ wit =
+    | WLit : int -> string wit
+    | WConv : 'a wit * ('a, 'b) conv -> 'b wit
+    | WMap : 'a wit * ('a -> 'b) -> 'b wit
+    | WOpt : Re.Mark.t * 'a wit -> 'a option wit
+    | WEither : Re.Mark.t * 'a wit * 'b wit -> ('a, 'b) Either.t wit
+    | WAlt : Re.Mark.t * 'a wit * 'a wit -> 'a wit
+    | WSeq : 'a wit * 'b wit -> ('a * 'b) wit
+    | WRep : int * 'a wit * Re.re -> 'a Seq.t wit
 end
 
-type ('e, 'a) t = ('e, 'a) T.raw
+include T
+
+type ('e, 'a) t = ('e, 'a) raw
 
 type 'a pattern = (non_evaluable, 'a) t
 
@@ -93,6 +102,8 @@ let rec _unlift_proof : type a. a expression -> a pattern = function
       Rep (_unlift_proof a)
   | Mod (a, b) ->
       Mod (a, _unlift_proof b)
+  | Matched_string (t, compiled) ->
+      Matched_string (_unlift_proof t, compiled)
 
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
@@ -359,48 +370,8 @@ let rec witnesspp : type e a. Format.formatter -> (e, a) t -> unit =
       ()
   | Mod (_, tre) ->
       witnesspp ppf tre
-
-(** {2 Evaluation functions} *)
-
-(** Evaluation is the act of filling the holes. *)
-
-let pstr = Format.pp_print_string
-
-let rec pprep f ppf seq =
-  match seq () with Seq.Nil -> () | Cons (x, seq) -> f ppf x ; pprep f ppf seq
-
-let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
- fun tre ppf ->
-  let open T in
-  match tre with
-  | Regexp (_, (lazy cre)) -> begin
-    function
-    | v ->
-        if not @@ Re.execp cre v then
-          invalid_arg
-          @@ Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
-        pstr ppf v
-    end
-  | Conv (tre, conv) ->
-      fun v -> evalpp tre ppf (conv.from_ v)
-  | Opt p -> begin
-    function None -> pstr ppf "" | Some x -> evalpp p ppf x
-  end
-  | Seq (tre1, tre2) ->
-      fun (x1, x2) -> evalpp tre1 ppf x1 ; evalpp tre2 ppf x2
-  | Prefix (tre_l, tre) ->
-      fun v -> witnesspp ppf tre_l ; evalpp tre ppf v
-  | Suffix (tre, tre_g) ->
-      fun v -> evalpp tre ppf v ; witnesspp ppf tre_g
-  | Either (treL, treR) -> begin
-    function Left x -> evalpp treL ppf x | Right x -> evalpp treR ppf x
-  end
-  | Rep tre ->
-      pprep (evalpp tre) ppf
-  | Mod (_, tre) ->
-      evalpp tre ppf
-
-let eval tre = Format.asprintf "%a" (evalpp tre)
+  | Matched_string (tre, _compiled) ->
+      witnesspp ppf tre
 
 (** {2 matching} *)
 
@@ -413,29 +384,29 @@ let eval tre = Format.asprintf "%a" (evalpp tre)
     to be able to guess the branch matched.
 *)
 
-let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
+let rec build : type e a. int -> (e, a) t -> int * a wit * Re.t =
   let open! Re in
   let open T in
   fun i -> function
     | Regexp (re, _) ->
-        (i + 1, Lit i, group @@ no_group re)
+        (i + 1, WLit i, group @@ no_group re)
     | Conv (e, conv) ->
         let i', w, re = build i e in
-        (i', Conv (w, conv), re)
+        (i', WConv (w, conv), re)
     | Map (e, conv) ->
         let i', w, re = build i e in
-        (i', Map (w, conv), re)
+        (i', WMap (w, conv), re)
     | Opt e ->
         let i', w, (id, re) = map_3 mark @@ build i e in
-        (i', Opt (id, w), opt re)
+        (i', WOpt (id, w), opt re)
     | Either (e1, e2) ->
         let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
         let i'', w2, re2 = build i' e2 in
-        (i'', Either (id1, w1, w2), alt [re1; re2])
+        (i'', WEither (id1, w1, w2), alt [re1; re2])
     | Alt (e1, e2) ->
         let i', w1, (id1, re1) = map_3 mark @@ build i e1 in
         let i'', w2, re2 = build i' e2 in
-        (i'', Alt (id1, w1, w2), alt [re1; re2])
+        (i'', WAlt (id1, w1, w2), alt [re1; re2])
     | Prefix (e_ign, e) ->
         let i', w, re = build i e in
         let _, _, re_ign = build 1 e_ign in
@@ -447,13 +418,16 @@ let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
     | Seq (e1, e2) ->
         let i', w1, re1 = build i e1 in
         let i'', w2, re2 = build i' e2 in
-        (i'', Seq (w1, w2), seq [re1; re2])
+        (i'', WSeq (w1, w2), seq [re1; re2])
     | Rep e ->
         let _, w, re = build 1 e in
-        (i + 1, Rep (i, w, Re.compile re), group @@ rep @@ no_group re)
+        (i + 1, WRep (i, w, Re.compile re), group @@ rep @@ no_group re)
     | Mod (f, e) ->
         let i', w, re = build i e in
         (i', w, f re)
+    | Matched_string (e, _compiled) ->
+        let _, _w, re = build i e in
+        (i + 1, WLit i, group @@ no_group re)
 
 (** {3 Extraction.} *)
 
@@ -463,35 +437,35 @@ let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
     To avoid copy, we pass around the original string (and we use positions).
 *)
 let[@specialize] rec extract : type a.
-    original:string -> a T.wit -> Re.Group.t -> a =
+    original:string -> a wit -> Re.Group.t -> a =
  fun ~original rea s ->
   let open T in
   match rea with
-  | Lit i ->
+  | WLit i ->
       Re.Group.get s i
-  | Conv (w, conv) ->
+  | WConv (w, conv) ->
       let v = extract ~original w s in
       conv.to_ v
-  | Map (w, f) ->
+  | WMap (w, f) ->
       let v = extract ~original w s in
       f v
-  | Opt (id, w) ->
+  | WOpt (id, w) ->
       if not @@ Re.Mark.test s id then None else Some (extract ~original w s)
-  | Either (i1, w1, w2) ->
+  | WEither (i1, w1, w2) ->
       if Re.Mark.test s i1 then Either.Left (extract ~original w1 s)
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
         Right (extract ~original w2 s)
-  | Alt (i1, w1, w2) ->
+  | WAlt (i1, w1, w2) ->
       if Re.Mark.test s i1 then extract ~original w1 s
       else
         (* Invariant: Alt produces [Re.alt [e1 ; e2]] *)
         extract ~original w2 s
-  | Seq (e1, e2) ->
+  | WSeq (e1, e2) ->
       let v1 = extract ~original e1 s in
       let v2 = extract ~original e2 s in
       (v1, v2)
-  | Rep (i, e, re) ->
+  | WRep (i, e, re) ->
       extract_list ~original e re i s
 
 (** We need to re-match the string for lists, in order to extract
@@ -501,7 +475,7 @@ let[@specialize] rec extract : type a.
     possible as it would be equivalent to counting in an automaton).
 *)
 and[@specialize] extract_list : type a.
-    original:string -> a T.wit -> Re.re -> int -> Re.Group.t -> a Seq.t =
+    original:string -> a wit -> Re.re -> int -> Re.Group.t -> a Seq.t =
  fun ~original e re i s ->
   let aux = extract ~original e in
   let pos, pos' = Re.Group.offset s i in
@@ -515,8 +489,6 @@ type +'r route = Route : ('e, 'a) t * ('a -> 'r) -> 'r route
 let route re f = Route (re, f)
 
 let ( --> ) = route
-
-type 'r wit_route = WRoute : Re.Mark.t * 'a T.wit * ('a -> 'r) -> 'r wit_route
 
 (* It's important to keep the order here, since Re will choose
    the first regexp if there is ambiguity.
@@ -542,10 +514,6 @@ let rec extract_route ~original wl subs =
       else extract_route ~original wl subs
 
 (** {4 Compilation and execution} *)
-
-type 'r info = One of 'r T.wit | Routes of 'r wit_route list
-
-type 'a re = {info: 'a info; cre: Re.re}
 
 let compile tre =
   let _, wit, re = build 1 tre in
@@ -592,6 +560,61 @@ let all ?pos ?len tcre original =
   try Result.Ok (Seq.to_list @@ all_seq ?pos ?len tcre original)
   with exn -> Result.Error (`ConverterFailure exn)
 
+(** {!matched_string} requires {!compile compile}, which is why its not in the expected section. *)
+let matched_string tre = Matched_string (tre, lazy (compile tre))
+
+(** {2 Evaluation functions} *)
+
+(** Evaluation is the act of filling the holes. *)
+
+let pstr = Format.pp_print_string
+
+let rec pprep f ppf seq =
+  match seq () with Seq.Nil -> () | Cons (x, seq) -> f ppf x ; pprep f ppf seq
+
+let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
+ fun tre ppf ->
+  let open T in
+  match tre with
+  | Regexp (_, (lazy cre)) -> begin
+    function
+    | v ->
+        if not @@ Re.execp cre v then
+          invalid_arg
+          @@ Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v ;
+        pstr ppf v
+    end
+  | Conv (tre, conv) ->
+      fun v -> evalpp tre ppf (conv.from_ v)
+  | Opt p -> begin
+    function None -> pstr ppf "" | Some x -> evalpp p ppf x
+  end
+  | Seq (tre1, tre2) ->
+      fun (x1, x2) -> evalpp tre1 ppf x1 ; evalpp tre2 ppf x2
+  | Prefix (tre_l, tre) ->
+      fun v -> witnesspp ppf tre_l ; evalpp tre ppf v
+  | Suffix (tre, tre_g) ->
+      fun v -> evalpp tre ppf v ; witnesspp ppf tre_g
+  | Either (treL, treR) -> begin
+    function Left x -> evalpp treL ppf x | Right x -> evalpp treR ppf x
+  end
+  | Rep tre ->
+      pprep (evalpp tre) ppf
+  | Mod (_, tre) ->
+      evalpp tre ppf
+  | Matched_string (tre, compiled) -> (
+      let compiled = Lazy.force compiled in
+      let f = evalpp tre ppf in
+      fun (v : string) ->
+        match exec compiled v with
+        | Error _e ->
+            invalid_arg
+            @@ Printf.sprintf "Tyre.eval: regexp not respected by \"%s\"." v
+        | Ok a ->
+            f a )
+
+let eval tre = Format.asprintf "%a" (evalpp tre)
+
 (** Pretty printers *)
 
 let sexp ppf s fmt = Format.fprintf ppf ("@[<3>(%s@ " ^^ fmt ^^ ")@]") s
@@ -633,27 +656,29 @@ let rec pp : type e a. _ -> (e, a) t -> unit =
       sexp ppf "Rep" "%a" pp tre
   | Mod (_, tre) ->
       sexp ppf "Mod" "%a" pp tre
+  | Matched_string (tre, _c) ->
+      sexp ppf "Matched_string" "%a" pp tre
 
-let rec pp_wit : type a. _ -> a T.wit -> unit =
+let rec pp_wit : type a. _ -> a wit -> unit =
  fun ppf ->
   let open T in
   function
-  | Lit i ->
-      sexp ppf "Lit" "%i" i
-  | Conv (tre, _) ->
-      sexp ppf "Conv" "%a" pp_wit tre
-  | Map (tre, _) ->
-      sexp ppf "Map" "%a" pp_wit tre
-  | Opt (_, tre) ->
-      sexp ppf "Opt" "%a" pp_wit tre
-  | Either (_, tre1, tre2) ->
-      sexp ppf "Alt" "%a@ %a" pp_wit tre1 pp_wit tre2
-  | Alt (_, tre1, tre2) ->
-      sexp ppf "Alt_flat" "%a@ %a" pp_wit tre1 pp_wit tre2
-  | Seq (tre1, tre2) ->
-      sexp ppf "Seq" "%a@ %a" pp_wit tre1 pp_wit tre2
-  | Rep (i, w, re) ->
-      sexp ppf "Rep" "%i@ %a@ %a" i pp_wit w Re.pp_re re
+  | WLit i ->
+      sexp ppf "WLit" "%i" i
+  | WConv (tre, _) ->
+      sexp ppf "WConv" "%a" pp_wit tre
+  | WMap (tre, _) ->
+      sexp ppf "WMap" "%a" pp_wit tre
+  | WOpt (_, tre) ->
+      sexp ppf "WOpt" "%a" pp_wit tre
+  | WEither (_, tre1, tre2) ->
+      sexp ppf "WAlt" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | WAlt (_, tre1, tre2) ->
+      sexp ppf "WAlt_flat" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | WSeq (tre1, tre2) ->
+      sexp ppf "WSeq" "%a@ %a" pp_wit tre1 pp_wit tre2
+  | WRep (i, w, re) ->
+      sexp ppf "WRep" "%i@ %a@ %a" i pp_wit w Re.pp_re re
 
 let pp_wit_route : type a. _ -> a wit_route -> unit =
  fun ppf (WRoute (_, w, _)) -> pp_wit ppf w
