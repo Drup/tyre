@@ -3,8 +3,8 @@
  (modules Test)
  (libraries tyre alcotest))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps test.exe)
  (action
   (run %{exe:test.exe})))

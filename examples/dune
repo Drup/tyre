@@ -3,14 +3,14 @@
  (modules Dims Ini)
  (libraries tyre))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps dims.exe)
  (action
   (run %{exe:dims.exe})))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps ini.exe)
  (action
   (run %{exe:ini.exe})))
