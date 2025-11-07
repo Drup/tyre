@@ -32,25 +32,21 @@ let map_3 f (x, y, z) = (x, y, f z)
 
 (** {2 The various types} *)
 
-type non_evaluable = NE
+type non_evaluable = [`NE | `E]
 
-type evaluable = E
-
-let () = ignore NE
-
-let () = ignore E
+type evaluable = [`E ]
 
 module T = struct
   type ('a, 'b) conv = {to_: 'a -> 'b; from_: 'b -> 'a}
 
-  type ('evaluable, 'a) raw =
+  type (+'evaluable, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> ('e, string) raw
     | Conv : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
-    | Map : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Map : (_, 'a) raw * ('a -> 'b) -> (_, 'b) raw
     | Opt : ('e, 'a) raw -> ('e, 'a option) raw
     | Either : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a, 'b) Either.t) raw
-    | Alt : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
+    | Alt : (_, 'a) raw * (_, 'a) raw -> (_, 'a) raw
     | Seq : ('e, 'a) raw * ('e, 'b) raw -> ('e, 'a * 'b) raw
     | Prefix : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
@@ -68,31 +64,11 @@ module T = struct
     | Rep : int * 'a wit * Re.re -> 'a Seq.t wit
 end
 
-type ('e, 'a) t = ('e, 'a) T.raw
+type (+'e, 'a) t = ('e, 'a) T.raw
 
 type 'a pattern = (non_evaluable, 'a) t
 
 type 'a expression = (evaluable, 'a) t
-
-let rec _unlift_proof : type a. a expression -> a pattern = function
-  | Regexp (a, b) ->
-      Regexp (a, b)
-  | Conv (a, b) ->
-      Conv (_unlift_proof a, b)
-  | Opt a ->
-      Opt (_unlift_proof a)
-  | Either (a, b) ->
-      Either (_unlift_proof a, _unlift_proof b)
-  | Seq (a, b) ->
-      Seq (_unlift_proof a, _unlift_proof b)
-  | Prefix (a, b) ->
-      Prefix (a, _unlift_proof b)
-  | Suffix (a, b) ->
-      Suffix (_unlift_proof a, b)
-  | Rep a ->
-      Rep (_unlift_proof a)
-  | Mod (a, b) ->
-      Mod (a, _unlift_proof b)
 
 let regex x : _ t =
   let re = lazy Re.(compile @@ whole_string @@ no_group x) in
@@ -108,7 +84,8 @@ let conv to_ from_ x : _ t = Conv (x, {to_; from_})
 
 let map f x : _ t = Map (x, f)
 
-let unlift t = map Fun.id t
+let unlift : type a. (evaluable, a) t -> (non_evaluable, a) t =
+ fun t -> ( t :> a pattern)
 
 let const v x = conv (fun () -> v) (fun _ -> ()) x
 
@@ -399,6 +376,10 @@ let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
       pprep (evalpp tre) ppf
   | Mod (_, tre) ->
       evalpp tre ppf
+  | Alt _ ->
+      invalid_arg "Alt is not compatible with eval. This should never happen."
+  | Map _ ->
+      invalid_arg "Map is not compatible with eval. This should never happen."
 
 let eval tre = Format.asprintf "%a" (evalpp tre)
 

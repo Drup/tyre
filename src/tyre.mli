@@ -29,9 +29,8 @@ val dim : (int * int) Tyre.t
 
 *)
 
-type non_evaluable
-
-type evaluable
+type non_evaluable = [`NE | `E]
+type evaluable = [`E]
 
 (** A typed regular expression.
 
@@ -42,39 +41,37 @@ type evaluable
     of the documentation, we will use «[tyre]» to designate a value of type
     {!t}.
 
-    A value of type [(evaluable, a) t] can be used with the {!eval} function to
-    returns a string [s] such that [exec (compile tyre) s = v]. We call such a
-    value an {!expression}.
-
     A value of type [(non_evaluable, a) t] can only be used with functions that
     match a string, it can't be used to produce an example string. Because its
     only usable for matching, it is called a {!pattern}.
+
+    A value of type [(evaluable, a) t] can be used with the {!eval} function to
+    returns a string [s] such that [exec (compile tyre) s = v]. We call such a
+    value expressions, but they don't have a type binding because every
+    expression is also a [pattern].
 *)
-type ('evaluable, 'a) t
+type (+'evaluable, 'a) t
 
 (** A regexp only usable for matching *)
 type 'a pattern = (non_evaluable, 'a) t
 
-(** A regexp usable both for matching and evaluating. *)
-type 'a expression = (evaluable, 'a) t
-
-val unlift : 'a expression -> 'a pattern
-(** Turn an expression into a pattern. *)
+val unlift : (evaluable, 'a) t -> 'a pattern
+(** [unlift e] Turn an expression into a pattern. Equivalent to [(e :> _ pattern)] *)
 
 (** {1 Combinators} *)
 
-val pcre : string -> string expression
+val pcre : string -> (_, string) t
 (** [pcre s] is a tyregex that matches the PCRE [s] and return the
     corresponding string.
     Groups in [s] are ignored.
 *)
 
-val regex : Re.t -> string expression
+val regex : Re.t -> (_, string) t
 (** [regex re] is a tyregex that matches [re] and return the corresponding string.
     Groups inside [re] are erased.
 *)
 
-val conv : ('a -> 'b) -> ('b -> 'a) -> 'a expression -> 'b expression
+val conv : ('a -> 'b) -> ('b -> 'a) -> ('e, 'a) t -> ('e, 'b) t
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
     [to_] is allowed to raise an exception [exn].
@@ -211,34 +208,34 @@ end
 
 (** {2 Useful combinators} *)
 
-val str : string -> unit expression
+val str : string -> (_, unit) t
 (** [str s] matches [s] and evaluates to [s]. *)
 
-val char : char -> unit expression
+val char : char -> (_, unit) t
 (** [char c] matches [c] and evaluates to [c]. *)
 
-val blanks : unit expression
+val blanks : (_, unit) t
 (** [blanks] matches [Re.(rep blank)] and doesn't return anything. *)
 
-val int : int expression
+val int : (_, int) t
 (** [int] matches [-?[0-9]+] and returns the matched integer.
 
     Integers that do not fit in an [int] will fail.
 *)
 
-val pos_int : int expression
+val pos_int : (_, int) t
 (** [pos_int] matches [[0-9]+] and returns the matched positive integer.
 
     Integers that do not fit in an [int] will fail.
 *)
 
-val float : float expression
+val float : (_, float) t
 (** [float] matches [-?[0-9]+( .[0-9]* )?] and returns the matched floating point number.
 
     Floating point numbers that do not fit in a [float] returns {!infinity} or {!neg_infinity}.
 *)
 
-val bool : bool expression
+val bool : (_, bool) t
 (** [bool] matches [true|false] and returns the matched boolean. *)
 
 val list : ('e, 'a) t -> ('e, 'a list) t
@@ -325,43 +322,43 @@ module Charset : sig
   val xdigit : t
 end
 
-val charset : Charset.t -> char expression
-(** [charset cs] is a regular expression that matches any character in [cs]. *)
+val charset : Charset.t -> (_, char) t
+(** [charset cs] is a (_, regular) t that matches any character in [cs]. *)
 
 (** {2 Predefined character sets as [char expressions]} *)
 
-val any : char expression
+val any : (_, char) t
 
-val notnl : char expression
+val notnl : (_, char) t
 
-val wordc : char expression
+val wordc : (_, char) t
 
-val alpha : char expression
+val alpha : (_, char) t
 
-val ascii : char expression
+val ascii : (_, char) t
 
-val blank : char expression
+val blank : (_, char) t
 
-val cntrl : char expression
+val cntrl : (_, char) t
 
-val digit : char expression
+val digit : (_, char) t
 (** There are combinators for {!int}s and {!float}s, using them is advisable. *)
 
-val graph : char expression
+val graph : (_, char) t
 
-val lower : char expression
+val lower : (_, char) t
 
-val print : char expression
+val print : (_, char) t
 
-val punct : char expression
+val punct : (_, char) t
 
-val space : char expression
+val space : (_, char) t
 
-val upper : char expression
+val upper : (_, char) t
 
-val xdigit : char expression
+val xdigit : (_, char) t
 
-val any_string : string expression
+val any_string : (_, string) t
 (** matches the same strings as [rep any] but returns the matched string instead
   of a list of chars. *)
 
@@ -369,9 +366,9 @@ val any_string : string expression
 
     See {!Re} for details on the semantics of those combinators. *)
 
-val start : unit expression
+val start : (_, unit) t
 
-val stop : unit expression
+val stop : (_, unit) t
 
 val word : ('e, 'a) t -> ('e, 'a) t
 
@@ -391,7 +388,7 @@ val nest : ('e, 'a) t -> ('e, 'a) t
 
 (** {1:matching Matching} *)
 
-(** A compiled typed regular expression. *)
+(** A compiled typed (_, regular) t. *)
 type 'a re
 
 val compile : (_, 'a) t -> 'a re
@@ -470,12 +467,12 @@ val route : 'a route list -> 'a re
 
 (** {1:eval Evaluating} *)
 
-val eval : 'a expression -> 'a -> string
+val eval : (evaluable, 'a) t -> 'a -> string
 (** [eval tyre v] returns a string [s] such that [exec (compile tyre) s = v].
 
     Note that such string [s] is not unique. [eval] will usually returns a very simple witness. *)
 
-val evalpp : 'a expression -> Format.formatter -> 'a -> unit
+val evalpp : (evaluable, 'a) t -> Format.formatter -> 'a -> unit
 (** [evalpp tyre ppf v] is equivalent to [Format.fprintf ppf "%s" (eval tyre v)], but more efficient.
 
     Is is generally used with ["%a"]:
@@ -497,14 +494,14 @@ val pp_re : Format.formatter -> 'a re -> unit
 module Internal : sig
   type ('a, 'b) conv = {to_: 'a -> 'b; from_: 'b -> 'a}
 
-  type ('evaluable, 'a) raw =
+  type (+'evaluable, 'a) raw =
     (* We store a compiled regex to efficiently check string when unparsing. *)
     | Regexp : Re.t * Re.re Lazy.t -> ('e, string) raw
     | Conv : ('e, 'a) raw * ('a, 'b) conv -> ('e, 'b) raw
-    | Map : (_, 'a) raw * ('a -> 'b) -> (non_evaluable, 'b) raw
+    | Map : (_, 'a) raw * ('a -> 'b) -> (_, 'b) raw
     | Opt : ('e, 'a) raw -> ('e, 'a option) raw
     | Either : ('e, 'a) raw * ('e, 'b) raw -> ('e, ('a, 'b) Either.t) raw
-    | Alt : (_, 'a) raw * (_, 'a) raw -> (non_evaluable, 'a) raw
+    | Alt : (_, 'a) raw * (_, 'a) raw -> (_, 'a) raw
     | Seq : ('e, 'a) raw * ('e, 'b) raw -> ('e, 'a * 'b) raw
     | Prefix : (_, 'b) raw * ('e, 'a) raw -> ('e, 'a) raw
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
@@ -514,6 +511,8 @@ module Internal : sig
   val from_t : ('e, 'a) t -> ('e, 'a) raw
 
   val to_t : ('e, 'a) raw -> ('e, 'a) t
+(** Be very careful, this function is not safe with regards to evaluability, and
+  using it with {!eval} can lead to runtime errors. *)
 
   type _ wit =
     | Lit : int -> string wit
