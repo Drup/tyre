@@ -25,6 +25,7 @@ depends: [
   "gen" {with-test & >= "1.0"}
   "containers" {with-test & >= "3.0"}
   "alcotest" {with-test & >= "0.8.0"}
+  "angstrom" {with-test & >= "0.16.1"}
   "odoc" { with-doc }
 ]
 
