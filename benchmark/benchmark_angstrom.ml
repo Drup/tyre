@@ -31,7 +31,9 @@ let tyre_all_seq s =
   assert (length l = 55 * 100)
 
 let angstrom s =
-  match Angstrom.(parse_string (many Angstrom_rFC2616.request)) s with
+  match
+    Angstrom.(parse_string ~consume:All (many Angstrom_rFC2616.request)) s
+  with
   | Result.Ok l ->
       assert (List.length l = 55 * 100)
   | Result.Error _ ->
