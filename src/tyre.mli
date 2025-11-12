@@ -3,7 +3,7 @@
 (**
 Tyre is a set of combinators to build type-safe regular expressions, allowing automatic extraction and modification of matched groups.
 
-Tyre is bi-directional: a typed regular expressions can be used both for {{!matching}matching} and {{!eval}evaluation}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
+Tyre is bi-directional: a typed regular expressions can be used both for {{!matching}matching} and {{!val-eval}evaluation}. Multiple tyregexs can be combined in order to do {{!routing}routing} in similar manner as switches/pattern matching.
 Typed regular expressions are strictly as expressive as regular expressions from {{:https://github.com/ocaml/ocaml-re}re} (and are, as such, {b regular} expressions, not PCREs). Performances should be exactly the same.
 
 {[
@@ -45,7 +45,7 @@ type evaluable = [`E]
     match a string, it can't be used to produce an example string. Because its
     only usable for matching, it is called a {!pattern}.
 
-    A value of type [(evaluable, a) t] can be used with the {!eval} function to
+    A value of type [(evaluable, a) t] can be used with the {!val-eval} function to
     returns a string [s] such that [exec (compile tyre) s = v]. We call such a
     value expressions, but they don't have a type binding because every
     expression is also a [pattern].
@@ -106,10 +106,11 @@ val either : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a, 'b) Either.t) t
 
 val alt : (_, 'a) t -> (_, 'a) t -> 'a pattern
 (** [alt l r] matches either [l] or [r] and return the value of the one
-    that matched. It is not compatible with [eval], use
-    {!alt_either} might be used instead.
+    that matched.
 
-    The reason is that when evaluating [alt l r] with a value `v`, `eval`
+    It is not compatible with [eval], {!either} might be used instead.
+
+    The reason is that when evaluating [alt l r] with a value [v], [eval]
     has no way to know if the value could have been returned by [l] or by [r].
     *)
 
@@ -161,7 +162,7 @@ val ( <||> ) : ('e, 'a) t -> ('e, 'b) t -> ('e, ('a, 'b) Either.t) t
 
 val ( <|> ) : (_, 'a) t -> (_, 'a) t -> 'a pattern
 (** [t <|> t' ] is [alt t t']. It is not compatible with
-    [eval], use {!alt_flat_eval} instead if you need to call {!eval}. *)
+    [eval], use {!either} instead if you need to call {!val-eval}. *)
 
 val ( <&> ) : ('e, 'a) t -> ('e, 'b) t -> ('e, 'a * 'b) t
 (** [t <&> t'] is [seq t t']. *)
@@ -178,7 +179,7 @@ module Infix : sig
 
   val ( <|> ) : (_, 'a) t -> (_, 'a) t -> 'a pattern
   (** [t <|> t' ] is [alt t t']. It is not compatible with
-      [eval], use {!alt_eval} instead if you need to call {!eval}. *)
+      [eval], use {!either} instead if you need to call {!val-eval}. *)
 
   val ( <&> ) : ('e, 'a) t -> ('e, 'b) t -> ('e, 'a * 'b) t
   (** [t <&> t'] is [seq t t']. *)
@@ -440,7 +441,7 @@ val all :
 (** [all ctyre s] calls to {!exec} repeatedly and returns the list of all the matches. *)
 
 val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
-(** [all_seq ctyre s] is [all ctyre s] but returns a {!gen} instead. Matches
+(** [all_seq ctyre s] is [all ctyre s] but returns a {!seq} instead. Matches
     are enumerated lazily.
 
     Exceptions raised by converters are not caught.
