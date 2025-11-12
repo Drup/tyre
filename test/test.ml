@@ -157,6 +157,12 @@ let prefix_suffix =
       (str "foo" *> bool <&> int)
       (true, 4) "footrue4" ]
 
+let matched_string =
+  [ t_pat "int" A.string (matched_string int) "33" "33"
+  ; t_pat "prefix suffix" A.string
+      (str "abc" *> matched_string (bool <* int) <* bool)
+      "false33" "abcfalse33true" ]
+
 let composed =
   [ topt "option prefix" A.int (opt int <* str "foo") 3 "3foo" "foo"
   ; t "terminated list"
@@ -256,6 +262,7 @@ let () =
     ; ("charset", charset)
     ; ("not whole", notwhole)
     ; ("prefix suffix", prefix_suffix)
+    ; ("matched_string", matched_string)
     ; ("composed", composed)
     ; ("marks", marks)
     ; ("routes", route_test)
