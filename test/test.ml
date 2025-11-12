@@ -184,7 +184,12 @@ let composed =
   ; t_pat "map"
       A.(list @@ int)
       (list (map Char.code any))
-      [49; 97; 50; 53; 99] "1a25c" ]
+      [49; 97; 50; 53; 99] "1a25c"
+  ; t_pat "tuple map"
+      A.(pair int (list @@ int))
+      (int <* str ";" <&> list (map Char.code any))
+      (123, [49; 97; 50; 53; 99])
+      "123;1a25c" ]
 
 let marks =
   let t ?all s =
