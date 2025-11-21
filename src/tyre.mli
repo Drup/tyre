@@ -71,6 +71,14 @@ val regex : Re.t -> (_, string) t
     Groups inside [re] are erased.
 *)
 
+val matched_string : (_, 'a) t -> string pattern
+(** [matched_string t] matches the same string as [t], but return the matched
+    texted, discarding the result computed by [t].
+
+  Does not support [eval] because it not possible to implement for
+  [matched_string (prefix ...)].
+  *)
+
 val conv : ('a -> 'b) -> ('b -> 'a) -> ('e, 'a) t -> ('e, 'b) t
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
 
@@ -136,11 +144,11 @@ val rep1 : ('e, 'a) t -> ('e, 'a * 'a Seq.t) t
 val seq : ('e, 'a) t -> ('e, 'b) t -> ('e, 'a * 'b) t
 (** [seq tyre1 tyre2] matches [tyre1] then [tyre2] and return both values. *)
 
-val prefix : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
+val prefix : (_, _) t -> ('e, 'a) t -> ('e, 'a) t
 (** [prefix tyre_i tyre] matches [tyre_i], ignores the result, and then matches [tyre] and returns its result. Converters in [tyre_i] are never called.
 *)
 
-val suffix : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
+val suffix : ('e, 'a) t -> (_, _) t -> ('e, 'a) t
 (** Same as [prefix], but reversed. *)
 
 (** {2 Let operators}*)
@@ -167,10 +175,10 @@ val ( <|> ) : (_, 'a) t -> (_, 'a) t -> 'a pattern
 val ( <&> ) : ('e, 'a) t -> ('e, 'b) t -> ('e, 'a * 'b) t
 (** [t <&> t'] is [seq t t']. *)
 
-val ( *> ) : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
+val ( *> ) : (_, _) t -> ('e, 'a) t -> ('e, 'a) t
 (** [ ti *> t ] is [prefix ti t]. *)
 
-val ( <* ) : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
+val ( <* ) : ('e, 'a) t -> (_, _) t -> ('e, 'a) t
 (** [ t <* ti ] is [suffix t ti]. *)
 
 module Infix : sig
@@ -184,10 +192,10 @@ module Infix : sig
   val ( <&> ) : ('e, 'a) t -> ('e, 'b) t -> ('e, 'a * 'b) t
   (** [t <&> t'] is [seq t t']. *)
 
-  val ( *> ) : ('e, _) t -> ('e, 'a) t -> ('e, 'a) t
+  val ( *> ) : (_, _) t -> ('e, 'a) t -> ('e, 'a) t
   (** [ ti *> t ] is [prefix ti t]. *)
 
-  val ( <* ) : ('e, 'a) t -> ('e, _) t -> ('e, 'a) t
+  val ( <* ) : ('e, 'a) t -> (_, _) t -> ('e, 'a) t
   (** [ t <* ti ] is [suffix t ti]. *)
 
   val ( <*> ) : ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern
@@ -508,6 +516,7 @@ module Internal : sig
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
+    | Matched_string : (_, 'a) raw -> ('e, string) raw
 
   val from_t : ('e, 'a) t -> ('e, 'a) raw
 
