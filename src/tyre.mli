@@ -30,6 +30,7 @@ val dim : (int * int) Tyre.t
 *)
 
 type non_evaluable = [`NE | `E]
+
 type evaluable = [`E]
 
 (** A typed regular expression.
@@ -408,8 +409,7 @@ type 'a error = [`NoMatch of 'a re * string | `ConverterFailure of exn]
 
 val pp_error : Format.formatter -> _ error -> unit
 
-val exec :
-  ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) result
+val exec : ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) result
 (** [exec ctyre s] matches the string [s] using
     the compiled tyregex [ctyre] and returns the extracted value.
 
@@ -444,8 +444,7 @@ val replace :
 
 (** {2:repeat Repeated Matching} *)
 
-val all :
-  ?pos:int -> ?len:int -> 'a re -> string -> ('a list, 'a error) result
+val all : ?pos:int -> ?len:int -> 'a re -> string -> ('a list, 'a error) result
 (** [all ctyre s] calls to {!exec} repeatedly and returns the list of all the matches. *)
 
 val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
@@ -521,7 +520,7 @@ module Internal : sig
   val from_t : ('e, 'a) t -> ('e, 'a) raw
 
   val to_t : ('e, 'a) raw -> ('e, 'a) t
-(** Be very careful, this function is not safe with regards to evaluability, and
+  (** Be very careful, this function is not safe with regards to evaluability, and
   using it with {!eval} can lead to runtime errors. *)
 
   type _ wit =

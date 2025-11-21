@@ -34,7 +34,7 @@ let map_3 f (x, y, z) = (x, y, f z)
 
 type non_evaluable = [`NE | `E]
 
-type evaluable = [`E ]
+type evaluable = [`E]
 
 module T = struct
   type ('a, 'b) conv = {to_: 'a -> 'b; from_: 'b -> 'a}
@@ -89,7 +89,7 @@ let conv to_ from_ x : _ t = Conv (x, {to_; from_})
 let map f x : _ t = Map (x, f)
 
 let unlift : type a. (evaluable, a) t -> (non_evaluable, a) t =
- fun t -> ( t :> a pattern)
+ fun t -> (t :> a pattern)
 
 let const v x = conv (fun () -> v) (fun _ -> ()) x
 
@@ -387,7 +387,8 @@ let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
   | Map _ ->
       invalid_arg "Map is not compatible with eval. This should never happen."
   | Matched_string _ ->
-      invalid_arg "Matched_string is not compatible with eval. This should never happen."
+      invalid_arg
+        "Matched_string is not compatible with eval. This should never happen."
 
 let eval tre = Format.asprintf "%a" (evalpp tre)
 
