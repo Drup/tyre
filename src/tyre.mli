@@ -409,7 +409,7 @@ type 'a error = [`NoMatch of 'a re * string | `ConverterFailure of exn]
 val pp_error : Format.formatter -> _ error -> unit
 
 val exec :
-  ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) Result.result
+  ?pos:int -> ?len:int -> 'a re -> string -> ('a, 'a error) result
 (** [exec ctyre s] matches the string [s] using
     the compiled tyregex [ctyre] and returns the extracted value.
 
@@ -445,7 +445,7 @@ val replace :
 (** {2:repeat Repeated Matching} *)
 
 val all :
-  ?pos:int -> ?len:int -> 'a re -> string -> ('a list, 'a error) Result.result
+  ?pos:int -> ?len:int -> 'a re -> string -> ('a list, 'a error) result
 (** [all ctyre s] calls to {!exec} repeatedly and returns the list of all the matches. *)
 
 val all_seq : ?pos:int -> ?len:int -> 'a re -> string -> 'a Seq.t
