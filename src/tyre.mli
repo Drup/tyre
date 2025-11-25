@@ -56,6 +56,13 @@ type (+'evaluable, 'a) t
 (** A regexp only usable for matching *)
 type 'a pattern = (non_evaluable, 'a) t
 
+val lift : ('a -> string) -> 'a pattern -> ('e, 'a) t
+(** [lift f p] makes the pattern [p] evaluable by providing a conversion
+    function.
+
+    Correctness is not checked, if you provide a string that does not match the
+    regex, {!val-eval} will just return that. *)
+
 val unlift : (evaluable, 'a) t -> 'a pattern
 (** [unlift e] Turn an expression into a pattern. Equivalent to [(e :> _ pattern)] *)
 
@@ -104,6 +111,9 @@ val app : ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern
 
 val const : 'a -> ('e, unit) t -> ('e, 'a) t
 (** [const v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
+
+val discard : (_, 'a) t -> unit pattern
+(** [discard tyre] matches [tyre] but has value [()] *)
 
 val opt : ('e, 'a) t -> ('e, 'a option) t
 (** [opt tyre] matches either [tyre] or the empty string. Similar to {!Re.opt}. *)
@@ -516,6 +526,7 @@ module Internal : sig
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
     | Matched_string : (_, 'a) raw -> ('e, string) raw
+    | Lift : (_, 'a) raw * ('a -> string) -> (_, 'a) raw
 
   val from_t : ('e, 'a) t -> ('e, 'a) raw
 

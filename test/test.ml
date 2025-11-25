@@ -192,8 +192,21 @@ let composed =
       (list (map Char.code any))
       [49; 97; 50; 53; 99] "1a25c"
   ; t_pat "tuple map"
-      A.(pair int (list @@ int))
+      A.(pair int (list int))
       (int <* str ";" <&> list (map Char.code any))
+      (123, [49; 97; 50; 53; 99])
+      "123;1a25c"
+  ; t "tuple lift"
+      A.(pair int (list int))
+      (lift
+         begin fun (i, li) ->
+           string_of_int i ^ ";"
+           ^ String.of_seq (List.to_seq (List.map Char.chr li))
+         end
+         begin
+           let+ i = int and+ () = str ";" and+ li = list (map Char.code any) in
+           (i, li)
+         end )
       (123, [49; 97; 50; 53; 99])
       "123;1a25c" ]
 

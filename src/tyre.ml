@@ -53,6 +53,7 @@ module T = struct
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
     | Matched_string : (_, 'a) raw -> ('e, string) raw
+    | Lift : (_, 'a) raw * ('a -> string) -> (_, 'a) raw
 
   type _ wit =
     | Lit : int -> string wit
@@ -91,7 +92,11 @@ let map f x : _ t = Map (x, f)
 let unlift : type a. (evaluable, a) t -> (non_evaluable, a) t =
  fun t -> (t :> a pattern)
 
+let lift f re : _ t = Lift (re, f)
+
 let const v x = conv (fun () -> v) (fun _ -> ()) x
+
+let discard x = map ignore x
 
 let seq a b : _ t = Seq (a, b)
 
@@ -342,6 +347,8 @@ let rec witnesspp : type e a. Format.formatter -> (e, a) t -> unit =
       witnesspp ppf tre
   | Matched_string tre ->
       witnesspp ppf tre
+  | Lift (tre, _) ->
+      witnesspp ppf tre
 
 (** {2 Evaluation functions} *)
 
@@ -378,6 +385,8 @@ let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
   | Either (treL, treR) -> begin
     function Left x -> evalpp treL ppf x | Right x -> evalpp treR ppf x
   end
+  | Lift (_re, conv) ->
+      fun v -> pstr ppf (conv v)
   | Rep tre ->
       pprep (evalpp tre) ppf
   | Mod (_, tre) ->
@@ -448,6 +457,9 @@ let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
     | Matched_string e ->
         let _, _, re = build i e in
         (i + 1, Lit i, group @@ no_group re)
+    | Lift (e, _conv) ->
+        let i', w, re = build i e in
+        (i', w, re)
 
 (** Extracting is just a matter of following the witness.
     We just need to take care of counting where we are in the matching groups.
