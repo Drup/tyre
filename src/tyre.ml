@@ -52,7 +52,7 @@ module T = struct
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
-    | Lift : (_, 'a) raw * ('a -> string) -> (_, 'a) raw
+    | Lift : (_, 'a) raw * (Format.formatter -> 'a -> unit) -> (_, 'a) raw
 
   type _ wit =
     | Lit : int -> string wit
@@ -89,7 +89,11 @@ let map f x : _ t = Map (x, f)
 let unlift : type a. (evaluable, a) t -> (non_evaluable, a) t =
  fun t -> (t :> a pattern)
 
-let lift f re : _ t = Lift (re, f)
+let pstr = Format.pp_print_string
+
+let lift f re : _ t = Lift (re, fun ppf v -> pstr ppf (f v))
+
+let liftpp f re : _ t = Lift (re, f)
 
 let const v x = conv (fun () -> v) (fun _ -> ()) x
 
@@ -349,7 +353,7 @@ let rec witnesspp : type e a. Format.formatter -> (e, a) t -> unit =
 
 (** Evaluation is the act of filling the holes. *)
 
-let pstr = Format.pp_print_string
+
 
 let rec pprep f ppf seq =
   match seq () with Seq.Nil -> () | Cons (x, seq) -> f ppf x ; pprep f ppf seq
@@ -380,8 +384,8 @@ let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
   | Either (treL, treR) -> begin
     function Left x -> evalpp treL ppf x | Right x -> evalpp treR ppf x
   end
-  | Lift (_re, conv) ->
-      fun v -> pstr ppf (conv v)
+  | Lift (_re, pp) ->
+      fun v -> pp ppf v
   | Rep tre ->
       pprep (evalpp tre) ppf
   | Mod (_, tre) ->

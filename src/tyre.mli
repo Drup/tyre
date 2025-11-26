@@ -63,6 +63,10 @@ val lift : ('a -> string) -> 'a pattern -> ('e, 'a) t
     Correctness is not checked, if you provide a string that does not match the
     regex, {!val-eval} will just return that. *)
 
+val liftpp : (Format.formatter -> 'a -> unit) -> ('b, 'a) t -> ('c, 'a) t
+(** [liftpp] is equivalent to {!lift}, but uses {!Stdlib.Format} for better
+    performance.*)
+
 val unlift : (evaluable, 'a) t -> 'a pattern
 (** [unlift e] Turn an expression into a pattern. Equivalent to [(e :> _ pattern)] *)
 
@@ -522,7 +526,7 @@ module Internal : sig
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
-    | Lift : (_, 'a) raw * ('a -> string) -> (_, 'a) raw
+    | Lift : (_, 'a) raw * (Format.formatter -> 'a -> unit) -> (_, 'a) raw
 
   val from_t : ('e, 'a) t -> ('e, 'a) raw
 

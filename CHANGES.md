@@ -5,8 +5,9 @@
   ones that cannot: `(evaluable, 'a) Tyre.t` and `(non_evaluable, 'a) Tyre.t`.
 * Introduce alias `type pattern` for `(non_evaluable, 'a) Tyre.t`.
 * Introduce `val lift : ('a -> string) -> 'a pattern -> ('e, 'a) t` to transform
-  a pattern into an expression by giving an explicit conversion function. And
-  `val unlift : (evaluable, 'a) t -> 'a pattern`.
+  a pattern into an expression by giving an explicit conversion function.
+  Also `liftpp` that does the same with better performance by using `Format`.
+* Introduce `val unlift : (evaluable, 'a) t -> 'a pattern`.
 * Introduce `val either: ('e, 'a) Tyre.t -> ('e, 'b) Tyre.t -> ('e, ('a, 'b) Either.t) Tyre.t`.
 * Change the type of `alt` to `(_, 'a) t -> (_, 'a) t -> 'a pattern`. Previous
   users of `alt` should switch to `either`.
