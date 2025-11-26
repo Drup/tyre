@@ -23,7 +23,6 @@
   computed value and just return the string that was matched.
 * Drop dependency on `Result` library. Stdlib is now used.
 
-
 # 0.5 (24 January 2020)
 
 * Move to dune
