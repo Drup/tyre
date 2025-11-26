@@ -3,14 +3,25 @@
 * Introduce charsets: contrary to `Re`, they have a different type from regex.
 * Type the difference between regexps that can be evaluated reversed and the
   ones that cannot: `(evaluable, 'a) Tyre.t` and `(non_evaluable, 'a) Tyre.t`.
-* Introduce alias expression for `(evaluable, 'a) Tyre.t` and alias pattern for
-  `(non_evaluable, 'a) Tyre.t`.
+* Introduce alias `type pattern` for `(non_evaluable, 'a) Tyre.t`.
+* Introduce `val lift : ('a -> string) -> 'a pattern -> ('e, 'a) t` to transform
+  a pattern into an expression by giving an explicit conversion function. And
+  `val unlift : (evaluable, 'a) t -> 'a pattern`.
 * Introduce `val either: ('e, 'a) Tyre.t -> ('e, 'b) Tyre.t -> ('e, ('a, 'b) Either.t) Tyre.t`.
+* Change the type of `alt` to `(_, 'a) t -> (_, 'a) t -> 'a pattern`. Previous
+  users of `alt` should switch to `either`.
+* Introduce `val alt_eval: ('a -> [`Left | `Right]) -> ('e, 'a) t -> ('e, 'a) t -> ('e, 'a) t`
+  This has flat typing but is compatible with `eval`.
+* Operators: `<|>` is `alt`, `<||>` is `either`.
 * Introduce `val map : ('a -> 'b) -> (_, 'a) t -> 'b pattern` and its
   corresponding operators: `let+` and `<$>`.
 * Introduce `(and+)` which is an alias of `seq`.
 * Introduce `val app: ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern` and its
   corresponding operator `<*>`
+* Introduce `val matched_string : (_, 'a) t -> (_, string) t` that discards the
+  computed value and just return the string that was matched.
+* Drop dependency on `Result` library. Stdlib is now used.
+
 
 # 0.5 (24 January 2020)
 
