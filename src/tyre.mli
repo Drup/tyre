@@ -346,9 +346,17 @@ end
 val charset : Charset.t -> (_, char) t
 (** [charset cs] is a (_, regular) t that matches any character in [cs]. *)
 
+val rep_charset : Charset.t -> (_, string) t
+(** [rep_charset cs] matches the same text as [rep (charset cs)], but directly
+  returns a [string] instead of a [char Seq.t]. *)
+
 (** {2 Predefined character sets as [char expressions]} *)
 
 val any : (_, char) t
+
+val rep_any : (_, string) t
+(** matches the same strings as [rep any] but returns the matched string instead
+  of a list of chars. *)
 
 val notnl : (_, char) t
 
@@ -378,10 +386,6 @@ val space : (_, char) t
 val upper : (_, char) t
 
 val xdigit : (_, char) t
-
-val any_string : (_, string) t
-(** matches the same strings as [rep any] but returns the matched string instead
-  of a list of chars. *)
 
 (** {2 Other combinators}
 

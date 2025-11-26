@@ -279,7 +279,11 @@ let charset (set : Charset.t) =
       str.[0] )
     (String.make 1) (regex set)
 
+let rep_charset (set : Charset.t) = regex (Re.rep set)
+
 let any = charset Charset.any
+
+let rep_any = rep_charset Charset.any
 
 let notnl = charset Charset.notnl
 
@@ -308,8 +312,6 @@ let space = charset Charset.space
 let upper = charset Charset.upper
 
 let xdigit = charset Charset.xdigit
-
-let any_string = regex Re.(rep any)
 
 (** {2 Witness} *)
 
@@ -352,8 +354,6 @@ let rec witnesspp : type e a. Format.formatter -> (e, a) t -> unit =
 (** {2 Evaluation functions} *)
 
 (** Evaluation is the act of filling the holes. *)
-
-
 
 let rec pprep f ppf seq =
   match seq () with Seq.Nil -> () | Cons (x, seq) -> f ppf x ; pprep f ppf seq

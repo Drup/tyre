@@ -22,6 +22,8 @@
 * Introduce `val matched_string : (_, 'a) t -> (_, string) t` that discards the
   computed value and just return the string that was matched.
 * Drop dependency on `Result` library. Stdlib is now used.
+* Introduce `val rep_charset: Charset.t -> (_, string) t`, and shortcut
+  `val rep_any: (_, string) t`.
 
 # 0.5 (24 January 2020)
 
