@@ -11,7 +11,7 @@
 * Introduce `val either: ('e, 'a) Tyre.t -> ('e, 'b) Tyre.t -> ('e, ('a, 'b) Either.t) Tyre.t`.
 * Change the type of `alt` to `(_, 'a) t -> (_, 'a) t -> 'a pattern`. Previous
   users of `alt` should switch to `either`.
-* Introduce `val alt_eval: ('a -> [`Left | `Right]) -> ('e, 'a) t -> ('e, 'a) t -> ('e, 'a) t`
+* Introduce ``val alt_eval: ('a -> [`Left | `Right]) -> ('e, 'a) t -> ('e, 'a) t -> ('e, 'a) t``
   This has flat typing but is compatible with `eval`.
 * Operators: `<|>` is `alt`, `<||>` is `either`.
 * Introduce `val map : ('a -> 'b) -> (_, 'a) t -> 'b pattern` and its
