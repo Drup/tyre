@@ -158,8 +158,8 @@ let prefix_suffix =
       (true, 4) "footrue4" ]
 
 let matched_string =
-  [ t_pat "int" A.string (matched_string int) "33" "33"
-  ; t_pat "prefix suffix" A.string
+  [ t "int" A.string (matched_string int) "33" "33"
+  ; t "prefix suffix" A.string
       (str "abc" *> matched_string (bool <* int) <* bool)
       "false33" "abcfalse33true" ]
 

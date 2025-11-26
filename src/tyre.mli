@@ -79,13 +79,10 @@ val regex : Re.t -> (_, string) t
     Groups inside [re] are erased.
 *)
 
-val matched_string : (_, 'a) t -> string pattern
+val matched_string : (_, 'a) t -> (_, string) t
 (** [matched_string t] matches the same string as [t], but return the matched
-    texted, discarding the result computed by [t].
-
-  Does not support [eval] because it not possible to implement for
-  [matched_string (prefix ...)].
-  *)
+    text, discarding the result computed by [t].
+*)
 
 val conv : ('a -> 'b) -> ('b -> 'a) -> ('e, 'a) t -> ('e, 'b) t
 (** [conv to_ from_ tyre] matches the same text as [tyre], but converts back and forth to a different data type.
@@ -525,7 +522,6 @@ module Internal : sig
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
-    | Matched_string : (_, 'a) raw -> ('e, string) raw
     | Lift : (_, 'a) raw * ('a -> string) -> (_, 'a) raw
 
   val from_t : ('e, 'a) t -> ('e, 'a) raw

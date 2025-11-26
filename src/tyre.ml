@@ -52,7 +52,6 @@ module T = struct
     | Suffix : ('e, 'a) raw * (_, 'b) raw -> ('e, 'a) raw
     | Rep : ('e, 'a) raw -> ('e, 'a Seq.t) raw
     | Mod : (Re.t -> Re.t) * ('e, 'a) raw -> ('e, 'a) raw
-    | Matched_string : (_, 'a) raw -> ('e, string) raw
     | Lift : (_, 'a) raw * ('a -> string) -> (_, 'a) raw
 
   type _ wit =
@@ -82,8 +81,6 @@ let pcre s = regex @@ Re.Pcre.re s
 
    The exception matching of converters is handled by {!Tyre.exec} directly.
 *)
-
-let matched_string t : string pattern = Matched_string t
 
 let conv to_ from_ x : _ t = Conv (x, {to_; from_})
 
@@ -345,8 +342,6 @@ let rec witnesspp : type e a. Format.formatter -> (e, a) t -> unit =
       ()
   | Mod (_, tre) ->
       witnesspp ppf tre
-  | Matched_string tre ->
-      witnesspp ppf tre
   | Lift (tre, _) ->
       witnesspp ppf tre
 
@@ -395,9 +390,6 @@ let rec evalpp : type a. a expression -> Format.formatter -> a -> unit =
       invalid_arg "Alt is not compatible with eval. This should never happen."
   | Map _ ->
       invalid_arg "Map is not compatible with eval. This should never happen."
-  | Matched_string _ ->
-      invalid_arg
-        "Matched_string is not compatible with eval. This should never happen."
 
 let eval tre = Format.asprintf "%a" (evalpp tre)
 
@@ -454,9 +446,6 @@ let rec build : type e a. int -> (e, a) t -> int * a T.wit * Re.t =
     | Mod (f, e) ->
         let i', w, re = build i e in
         (i', w, f re)
-    | Matched_string e ->
-        let _, _, re = build i e in
-        (i + 1, Lit i, group @@ no_group re)
     | Lift (e, _conv) ->
         let i', w, re = build i e in
         (i', w, re)
@@ -511,6 +500,10 @@ and[@specialize] extract_list : type a.
   let pos, pos' = Re.Group.offset s i in
   let len = pos' - pos in
   Seq.map aux @@ Re.Seq.all ~pos ~len re original
+
+let matched_string tre : _ t =
+  let _, _, cre = build 1 tre in
+  regex cre
 
 (** {4 Multiple match} *)
 
