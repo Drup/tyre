@@ -109,6 +109,8 @@ val map : ('a -> 'b) -> (_, 'a) t -> 'b pattern
   used for evaluating. *)
 
 val app : ('e, 'a -> 'b) t -> ('e, 'a) t -> 'b pattern
+(** [app f v] matches [seq f v] and returns the application of the value
+  returned by [f] with the value returned by [v] *)
 
 val const : 'a -> ('e, unit) t -> ('e, 'a) t
 (** [const v tyre] matches [tyre] but has value [v]. Is a simplification of [conv] for [unit] regular expressions.*)
@@ -273,7 +275,7 @@ module Charset : sig
     Sets of characters support more operations than regular regexps, as you can
     diff them, so they have a specific type that allows these operations.
 
-    To convert to a regular [Tyre.t], use {!charset}. *)
+    To convert to a regular [Tyre.t], use {!charset} or {!rep_charset} *)
 
   (** A set of characters. *)
   type t
@@ -286,6 +288,7 @@ module Charset : sig
   val inter : t list -> t
 
   val diff : t -> t -> t
+  (** [diff a b] is the sets of chars that are in [a] but not in [b] *)
 
   val compl : t list -> t
   (** [compl sets] is [not (union sets)] *)
@@ -303,44 +306,76 @@ module Charset : sig
   (** The singleton set *)
 
   val range : char -> char -> t
+  (** range of characters ordered according to their code. Include both bounds.*)
 
   val set : string -> t
   (** any character in the string *)
 
   (** {3 Predefined character sets}
-      The exact characters matched are not documented in [Re], if you want specifics
-      you have to read the source: https://ocaml.org/p/re/latest/doc/src/re/cset.ml.html .
+
+    In general, matches latin1 characters, thats is the ocaml {!type-Stdlib.char} type.
+
+    The exact characters matched are not documented in [Re], the documentation
+    bellow was written using the source:
+    https://ocaml.orange/p/re/latest/doc/src/re/cset.ml.html .
   *)
 
   val any : t
+  (** any character including newline *)
 
   val notnl : t
+  (** any character except a new line *)
 
   val wordc : t
+  (** [wordc] is the union of {!alnum} and [char '_'] *)
 
   val alpha : t
+  (** [aplha] is the union of {!lower}, {!upper} and [set "\170\186"] *)
+
+  val alnum : t
+  (** [alnum] is the uninon of {!alpha} and {!digit} *)
 
   val ascii : t
+  (** chars with code 0 to 127, bounds included *)
 
   val blank : t
+  (** [blank] is a space [' '] or a tab [\t]. *)
 
   val cntrl : t
+  (** control characters. union of [range '\000' '\031'] and [rg '\127' '\159']. *)
 
   val digit : t
+  (** [digit] is [set "0123456789"] *)
 
   val graph : t
+  (** union of [range '\033' '\126'] and [range '\160' '\255'] *)
 
   val lower : t
+  (** [lower] is lowercase latin1 letter.
+
+      Includes [range 'a' 'z'], [char 'µ'],
+      [range '\223' '\246' = set "ßàáâãäåæçèéêëìíîïðñòóôõö"]
+      and [range '\248' '\255' = set "øùúûüýþÿ"]*)
 
   val print : t
+  (** printable latin1 characters. [range '\032' '\126' || range '\160' '\255'] *)
 
   val punct : t
+  (** latin1 ponctuation.
+      {[set "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~\160¡¢£¤¥¦§¨©«¬\173®¯°±²³´¶·¸¹»¼½¾¿×÷"]}
+  *)
 
   val space : t
+  (** [space] is [set " \t\n\013"] *)
 
   val upper : t
+  (** [upper] is latin1 uppercase letter.
+    This includes ascii uppercase letters, that is [range 'A' 'Z'], but also the
+    ranges [range '\192' '\214' = set "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ"]
+    and [range '\216' '\222' = set "ØÙÚÛÜÝÞ"] *)
 
   val xdigit : t
+  (** hexadecimal digit. [range '0' '9' || range 'a' 'f' || range 'A' 'F'] *)
 end
 
 val charset : Charset.t -> (_, char) t
@@ -353,39 +388,58 @@ val rep_charset : Charset.t -> (_, string) t
 (** {2 Predefined character sets as [char expressions]} *)
 
 val any : (_, char) t
+(** any character including newline *)
 
 val rep_any : (_, string) t
 (** matches the same strings as [rep any] but returns the matched string instead
   of a list of chars. *)
 
 val notnl : (_, char) t
+(** any character except a new line *)
 
 val wordc : (_, char) t
+(** see {!Charset.wordc} *)
 
 val alpha : (_, char) t
+(** see {!Charset.alpha} *)
+
+val alnum : (_, char) t
+(** see {!Charset.alnum} *)
 
 val ascii : (_, char) t
+(** see {!Charset.ascii} *)
 
 val blank : (_, char) t
+(** see {!Charset.blank} *)
 
 val cntrl : (_, char) t
+(** see {!Charset.cntrl} *)
 
 val digit : (_, char) t
-(** There are combinators for {!int}s and {!float}s, using them is advisable. *)
+(** see {!Charset.digit}.
+
+There are combinators for {!int}s and {!float}s, using them is advisable.  *)
 
 val graph : (_, char) t
+(** see {!Charset.graph} *)
 
 val lower : (_, char) t
+(** see {!Charset.lower} *)
 
 val print : (_, char) t
+(** see {!Charset.print} *)
 
 val punct : (_, char) t
+(** see {!Charset.punct} *)
 
 val space : (_, char) t
+(** see {!Charset.space} *)
 
 val upper : (_, char) t
+(** see {!Charset.upper} *)
 
 val xdigit : (_, char) t
+(** see {!Charset.xdigit} *)
 
 (** {2 Other combinators}
 

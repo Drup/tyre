@@ -249,6 +249,8 @@ module Charset = struct
 
   let alpha = Re.alpha
 
+  let alnum = Re.alnum
+
   let ascii = Re.ascii
 
   let blank = Re.blank
@@ -290,6 +292,8 @@ let notnl = charset Charset.notnl
 let wordc = charset Charset.wordc
 
 let alpha = charset Charset.alpha
+
+let alnum = charset Charset.alnum
 
 let ascii = charset Charset.ascii
 
