@@ -1,4 +1,4 @@
-# Unreleased
+# 1.0 (8th December 2025)
 
 * Introduce charsets: contrary to `Re`, they have a different type from regex.
 * Type the difference between regexps that can be evaluated reversed and the
